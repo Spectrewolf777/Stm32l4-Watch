@@ -44,7 +44,7 @@
 
 ## Things to improve on next pcb design
 
-- **Upgraded Architecture:** switch from the STM32L4 to the more powerful **STM32U5** advanced low-power states.
+- **Upgraded Architecture:** switch from the STM32L4 to the more powerful **STM32U5** advanced low-power states and maybe buck down to 1.8V instead of 3.3V.
 - **High-Speed USB:** Upgrade the USB interface to **USB High-Speed (HS)** for faster write and read speeds.
 - **Stereo Audio:** Replace the current mono microphone setup with a **stereo microphone**.
 - **Real-Time Audio Monitoring:** adding a **3.5mm audio jack** to allow direct, real-time monitoring of signal-processed audio.

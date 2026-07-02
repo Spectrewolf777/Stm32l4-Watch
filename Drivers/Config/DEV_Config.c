@@ -31,7 +31,7 @@
 ******************************************************************************/
 #include "DEV_Config.h"
 #include "i2c.h"
-#include "tim.h"
+//#include "tim.h"
 
 uint8_t I2C_ADDR;
 /********************************************************************************
@@ -101,7 +101,7 @@ int DEV_Module_Init(void)
     DEV_Digital_Write(DEV_RST_PIN, 1);
 		DEV_Digital_Write(DEV_INT_PIN, 1);
     DEV_Digital_Write(DEV_TP_RST_PIN, 1);
-    HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
+    //HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
 
 		DEV_I2C_Init(0x15 << 1);
 		return 0;
@@ -115,5 +115,5 @@ void DEV_Module_Exit(void)
     DEV_Digital_Write(DEV_RST_PIN, 0);
 		DEV_Digital_Write(DEV_INT_PIN, 0);
     DEV_Digital_Write(DEV_TP_RST_PIN, 0);
-    HAL_TIM_PWM_Stop(&htim5,TIM_CHANNEL_3);
+    //HAL_TIM_PWM_Stop(&htim5,TIM_CHANNEL_3);
 }

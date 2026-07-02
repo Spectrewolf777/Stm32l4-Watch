@@ -18,10 +18,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "i2c.h"
 #include "sdmmc.h"
 #include "spi.h"
-#include "tim.h"
 #include "usb_otg.h"
 #include "gpio.h"
 
@@ -37,13 +37,16 @@
 #include "LCD_Test.h"
 #include "DEV_Config.h"
 #include "tusb.h"
-
-
+#include "rv_3028_c7.h"
+#include "lv_port_disp.h"
+#include "lvgl/examples/anim/lv_example_anim.h"
+#include "UI/ui.h"
 
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+rv3028_handle_t rtc_handle;        /* RV-3028-C7 RTC handle */
 
 /* USER CODE END PTD */
 
@@ -60,6 +63,13 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+extern I2C_HandleTypeDef hi2c1; // Your configured I2C handle
+uint32_t last_rtc_request_time = 0;
+
+// Flags to manage the async flow
+volatile bool rtc_interrupt_fired = false;
+volatile bool rtc_read_complete = false;
+
 
 /* USER CODE END PV */
 
@@ -72,7 +82,21 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-
+void I2C_Scanner(I2C_HandleTypeDef *hi2c) {
+    printf("Starting I2C Scanner...\r\n");
+    HAL_StatusTypeDef res;
+    
+    for (uint8_t i = 0; i < 128; i++) {
+        // I2C addresses are 7-bit, so we shift left by 1 to include the R/W bit
+        res = HAL_I2C_IsDeviceReady(hi2c, (uint16_t)(i << 1), 3, 100);
+        
+        if (res == HAL_OK) {
+            printf("Device found at address: 0x%02X\r\n", i);
+        }
+    }
+    printf("Scanner Complete.\r\n");
+    fflush(stdout);
+}
 /* USER CODE END 0 */
 
 /**
@@ -104,13 +128,24 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C2_Init();
   MX_SPI2_Init();
-  MX_TIM5_Init();
   MX_SDMMC2_SD_Init();
   MX_I2C1_Init();
   MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
+
+  lv_init();
+  lv_port_disp_init();
+  //lv_example_anim_2();
+  ui_init();
+
+
+
+
+
+
 
   tusb_rhport_init_t dev_init = {
     .role = TUSB_ROLE_DEVICE,
@@ -119,9 +154,21 @@ int main(void)
 
   tusb_init(0, &dev_init);
 
-  uint32_t last_print_time = 0;
- 
 
+  
+
+
+  uint32_t last_print_time = 0;
+
+
+  uint32_t start_time = HAL_GetTick();
+  while (!tud_cdc_connected() && (HAL_GetTick() - start_time < 2000)) {
+      tud_task(); // Keep processing USB events while waiting
+  }
+
+
+
+    
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -132,19 +179,10 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     tud_task();
-  
-    /* 
-    if (HAL_GetTick() - last_print_time >= 1000) {
-        last_print_time = HAL_GetTick();
-        
-        printf("test\n"); 
-    }
+    lv_timer_handler();
 
-    */
-    
-    
-    //printf("debug testL\r\n"); // <-- Added \r\n here
-    //HAL_Delay(1000);
+  
+
   }
   /* USER CODE END 3 */
 }
@@ -215,10 +253,24 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+// STM32 EXTI Callback - Fires when the rtc_int pin changes state
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    // Check if the pin that triggered the interrupt is your rtc_int pin
+    if (GPIO_Pin == rtc_int_Pin) { 
+        rtc_interrupt_fired = true;
+    }
 
+    
+}
 
-
-
+// I2C Rx Complete Callback - Fires when the background time read is done
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+    if (hi2c->Instance == I2C1) { 
+        rtc_read_complete = true;
+    }
+}
 /* USER CODE END 4 */
 
 /**

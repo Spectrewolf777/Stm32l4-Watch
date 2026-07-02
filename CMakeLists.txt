@@ -47,14 +47,26 @@ file(GLOB_RECURSE TINYUSB_SOURCES
     "tinyusb/portable/synopsys/dwc2/*.c"
 )
 
+file(GLOB_RECURSE LVGL_SOURCES
+    "Drivers/lvgl/lvgl/src/*.c"
+)
+
+
+
+
+file(GLOB_RECURSE UI_SOURCES
+    "Drivers/lvgl/UI/*.c"
+)
+
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-    Drivers/GUI_DEV/GUI_Paint.c  # <-- Update this line
+    Drivers/GUI_DEV/GUI_Paint.c  
     Drivers/Config/DEV_Config.c
     
-   Drivers/example/LCD_1inch28_test.c  # <-- Change if the filename is different!
-   Drivers/LCD/LCD_1inch28.c          # <-- Change if the filename is different!
+   Drivers/example/LCD_1inch28_test.c  
+   Drivers/LCD/LCD_1inch28.c          
    Drivers/Fonts/font16.c
    Drivers/Fonts/font20.c
    Drivers/Fonts/font24.c
@@ -62,9 +74,13 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Src/usb_descriptors.c
    Core/Src/msc_disk.c
    Core/Src/board.c
+   Core/Src/rv_3028_c7.c
+   Core/Src/GC9A01.c
+   Core/Src/lv_port_disp.c
    ${TINYUSB_SOURCES}
-   
-   
+   ${LVGL_SOURCES}
+  
+   ${UI_SOURCES}
    
 )
 
@@ -79,6 +95,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Drivers/image
     Drivers/LCD
     tinyusb
+    Drivers/lvgl
+    Drivers/lvgl/UI
+   
+    
 )
 
 # Add project symbols (macros)

@@ -52,7 +52,7 @@
 #define DEV_RST_PIN     RST_GPIO_Port,RST_Pin		//
 #define DEV_DC_PIN      DC_GPIO_Port,DC_Pin			//
 #define DEV_CS_PIN			CS_GPIO_Port,CS_Pin			//
-#define DEV_BL_PIN			TIM5->CCR3
+#define DEV_BL_PIN          BL_GPIO_Port, BL_Pin
 #define DEV_INT_PIN     TP_INT_GPIO_Port,TP_INT_Pin
 #define DEV_TP_RST_PIN  TP_RST_GPIO_Port,TP_RST_Pin
 
@@ -76,8 +76,8 @@
 /**
  * PWM_BL
 **/
-#define DEV_Set_PWM(_Value)     DEV_BL_PIN= _Value
 
+#define DEV_Set_PWM(_Value)     DEV_Digital_Write(DEV_BL_PIN, 1)
 
 /*-----------------------------------------------------------------------------*/
 void DEV_I2C_Init(uint8_t Add);

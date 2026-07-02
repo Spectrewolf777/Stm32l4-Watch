@@ -283,7 +283,7 @@ void LCD_1in28_test()
 		}
     }
 }
-
+/*
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if(GPIO_Pin == TP_INT_Pin)
@@ -299,3 +299,4 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		}
 	}
 }
+*/

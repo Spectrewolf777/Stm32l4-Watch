@@ -35,10 +35,7 @@
   - Implement a digital **compass** for accurate heading and orientation sensing.
 - **Fitness Tracking:** Develop a dedicated **step-counting (pedometer)**.
 
-<img width="3000" height="4000" alt="20260702_144116" src="https://github.com/user-attachments/assets/fae22ff0-e9f9-4f5d-ba26-9ec73147122b" />
-<img width="3000" height="4000" alt="20260630_175311" src="https://github.com/user-attachments/assets/d8e07da5-8473-497b-a4a4-a36de698e74c" />
-<img width="950" height="990" alt="Capt3ure" src="https://github.com/user-attachments/assets/5668f43c-fb72-4d55-9978-51397f0ff26f" />
-<img width="936" height="748" alt="Capture2" src="https://github.com/user-attachments/assets/962126b6-9c2e-4f1a-8837-a52186947bc2" />
+<img width="2000" height="1600" alt="Untitled design" src="https://github.com/user-attachments/assets/88df3cd3-ec02-4325-b380-abda1396d602" />
 
 
 ## Things to improve on next pcb design

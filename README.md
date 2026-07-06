@@ -20,6 +20,10 @@
 | **NAND Flash** | `XTSDG04GWSIGA` | Onboard high-density SPI flash storage |
 | **Microphone** | `IM68D128BV01XTMA1` | High-performance digital PDM microphone |
 
+# Display 
+https://www.aliexpress.com/item/1005007293053050.html
+
+
 
 ## Current Software Implementation
 
@@ -36,6 +40,22 @@
 - **Fitness Tracking:** Develop a dedicated **step-counting (pedometer)**.
 
 <img width="2000" height="1600" alt="Untitled design" src="https://github.com/user-attachments/assets/88df3cd3-ec02-4325-b380-abda1396d602" />
+
+## Programming Instructions
+
+This board can be programmed using one of two methods depending on your hardware setup and whether you need Bluetooth Low Energy (BLE) functionality.
+
+- **Method 1 (Recommended): SWD Programmer**
+  - Allows you to flash both the **STM32** and the **nRF52** microcontrollers for full functionality (including BLE).
+  - Works with an **ST-Link** or **J-Link** (the **J-Link EDU Mini** is highly recommended as it natively supports both ecosystems).
+  - Connection can be made via a Tag-Connect cable like the **TC2030-IDC-NL** (an adapter board may be required depending on your toolchain).
+
+- **Method 2: USB-C DFU Bootloader**
+  - Allows direct flashing over USB-C using an `.elf` file and **STM32CubeProgrammer**.
+  - **Limitation:** This method **cannot** program the nRF52 chip, meaning you will not have BLE functionality out of the box. 
+  - **Hardware Note:** If you are omitting BLE, you can completely disconnect the BLE circuit by desoldering the **0 $\Omega$ resistor** located in the BLE section of the board.
+
+
 
 
 ## Things to improve on next pcb design

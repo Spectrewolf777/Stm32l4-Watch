@@ -27,17 +27,19 @@ https://www.aliexpress.com/item/1005007293053050.html
 
 ## Current Software Implementation
 
-- **Dual USB Interface:** Configured via TinyUSB to expose both **CDC (Virtual COM Port)** for serial debugging and **Mass Storage Class (MSC)** for direct file access.
+- **Dual USB Interface:** Configured via TinyUSB to expose both **CDC (Virtual COM Port)** for serial debugging which can accept commands and **Mass Storage Class (MSC)** for direct file access.
 - **Storage Integration:** Connection to the onboard **Storage**, allowing the device to act as a standard USB flash drive when plugged into a host.
+- **RTC** can set time and recieve time updating ui.
+- **Motion & Orientation Tracking** - IMU to reconize when screen tilted and to count steps.
 
 
 ## Planned Software Features
 
-- **Advanced Timing Management:** Implement **RTC software timers** to handle scheduling, sensor reads, and low power wake up cycles.
+- **RTC:** Need to setup timers to count down on ui and also to update on ui awake.
 - **Wireless Connectivity:** Integrate a **Bluetooth** stack to enable smartphone data syncing.
-- **Motion & Orientation Tracking:** - Integrate an **IMU** for precise motion tracking and gesture recognition.
-  - Implement a digital **compass** for accurate heading and orientation sensing.
-- **Fitness Tracking:** Develop a dedicated **step-counting (pedometer)**.
+- Implement a digital **compass** for accurate heading and orientation sensing.
+- **Motion & Orientation Tracking:** - adding more gestures to control microphone.
+
 
 <img width="2000" height="1600" alt="Untitled design" src="https://github.com/user-attachments/assets/88df3cd3-ec02-4325-b380-abda1396d602" />
 

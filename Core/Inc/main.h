@@ -59,14 +59,19 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define rtc_int_Pin GPIO_PIN_13
 #define rtc_int_GPIO_Port GPIOC
+#define rtc_int_EXTI_IRQn EXTI15_10_IRQn
 #define DisplayEnable_Pin GPIO_PIN_0
 #define DisplayEnable_GPIO_Port GPIOA
 #define BL_Pin GPIO_PIN_2
 #define BL_GPIO_Port GPIOA
+#define IMU_INT1_Pin GPIO_PIN_3
+#define IMU_INT1_GPIO_Port GPIOA
+#define IMU_INT1_EXTI_IRQn EXTI3_IRQn
 #define TP_RST_Pin GPIO_PIN_4
 #define TP_RST_GPIO_Port GPIOA
 #define TP_INT_Pin GPIO_PIN_0
 #define TP_INT_GPIO_Port GPIOB
+#define TP_INT_EXTI_IRQn EXTI0_IRQn
 #define CS_Pin GPIO_PIN_2
 #define CS_GPIO_Port GPIOB
 #define RST_Pin GPIO_PIN_8

@@ -14,13 +14,18 @@ extern "C" {
 extern void ui_Screen1_screen_init(void);
 extern void ui_Screen1_screen_destroy(void);
 extern lv_obj_t * ui_Screen1;
-extern lv_obj_t * ui_Image2;
+extern lv_obj_t * ui_monsterbg;
 extern lv_obj_t * ui_Time;
 extern lv_obj_t * ui_steps;
 extern lv_obj_t * ui_batPercent;
-extern lv_obj_t * ui_Image3;
-extern lv_obj_t * ui_Image4;
-extern lv_obj_t * ui_Image5;
+extern lv_obj_t * ui_footIcon;
+extern lv_obj_t * ui_date;
+extern lv_obj_t * ui_dayName;
+extern lv_obj_t * ui_Image1;
+extern lv_obj_t * ui_Image7;
+extern lv_obj_t * ui_Timer;
+extern lv_obj_t * ui_clock;
+extern lv_obj_t * ui_Bar;
 // CUSTOM VARIABLES
 
 #ifdef __cplusplus

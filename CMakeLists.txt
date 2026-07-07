@@ -77,9 +77,12 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Src/rv_3028_c7.c
    Core/Src/GC9A01.c
    Core/Src/lv_port_disp.c
+   Core/Src/serial_cmd.c
+   Core/Src/lsm6dsv16x_stepcounter.c
+   Core/Src/lsm6dsv16x_reg.c
+   Core/Src/wrist_wake.c
    ${TINYUSB_SOURCES}
    ${LVGL_SOURCES}
-  
    ${UI_SOURCES}
    
 )

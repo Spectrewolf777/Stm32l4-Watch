@@ -27,10 +27,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
 #include <stdio.h>
-
-
 #include "GUI_Paint.h"
 #include "fonts.h"
 #include "image.h"
@@ -41,6 +38,10 @@
 #include "lv_port_disp.h"
 #include "lvgl/examples/anim/lv_example_anim.h"
 #include "UI/ui.h"
+#include "serial_cmd.h"
+#include "lsm6dsv16x_stepcounter.h"
+#include "lsm6dsv16x_reg.h"
+#include "wrist_wake.h"
 
 /* USER CODE END Includes */
 
@@ -66,9 +67,16 @@ rv3028_handle_t rtc_handle;        /* RV-3028-C7 RTC handle */
 extern I2C_HandleTypeDef hi2c1; // Your configured I2C handle
 uint32_t last_rtc_request_time = 0;
 
+
+
 // Flags to manage the async flow
 volatile bool rtc_interrupt_fired = false;
 volatile bool rtc_read_complete = false;
+#define STEP_UPDATE_INTERVAL_MS   1000U   /* how often to poll/refresh ui_steps */
+
+bool StepCounter_CheckWristTilt(void);
+void StepCounter_IRQHandler(void);
+
 
 
 /* USER CODE END PV */
@@ -84,19 +92,45 @@ void SystemClock_Config(void);
 
 void I2C_Scanner(I2C_HandleTypeDef *hi2c) {
     printf("Starting I2C Scanner...\r\n");
+    fflush(stdout);
+    tud_task();
+
     HAL_StatusTypeDef res;
-    
     for (uint8_t i = 0; i < 128; i++) {
-        // I2C addresses are 7-bit, so we shift left by 1 to include the R/W bit
         res = HAL_I2C_IsDeviceReady(hi2c, (uint16_t)(i << 1), 3, 100);
-        
         if (res == HAL_OK) {
             printf("Device found at address: 0x%02X\r\n", i);
+            fflush(stdout);
         }
+        tud_task();  // <-- service USB every iteration so CDC actually drains
     }
     printf("Scanner Complete.\r\n");
     fflush(stdout);
+    tud_task();
 }
+
+
+void USB_Print(const char *format, ...)
+{
+    // Don't try to send if the USB isn't connected to a host (like a PC terminal)
+    if (!tud_cdc_connected()) {
+        return; 
+    }
+
+    char buffer[128]; // Adjust buffer size if you plan to send very long strings
+    va_list args;
+    
+    va_start(args, format);
+    int len = vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    if (len > 0) {
+        tud_cdc_write(buffer, len);
+        tud_cdc_write_flush(); // Force the data to send immediately
+    }
+}
+
+
 /* USER CODE END 0 */
 
 /**
@@ -140,11 +174,27 @@ int main(void)
   lv_port_disp_init();
   //lv_example_anim_2();
   ui_init();
+  uint32_t last_step_update_time = 0;
+  rv3028_init(&rtc_handle, &hi2c1); // 
+  bool step_sensor_ok = StepCounter_Init(&hi2c1);
+if (!step_sensor_ok) {
+    lv_label_set_text(ui_steps, "--");
+  }
+
+  WristWake_Init(&hi2c1);
 
 
-
-
-
+  // 2. Set the initial time (e.g., 1:50 PM as shown in your SquareLine image)
+  rv3028_time_t initial_time = {
+      .seconds = 0,
+      .minutes = 33,
+      .hours = 13, // 1:33 PM (using 24-hour format internally)
+      .weekday = 1,
+      .date = 4,
+      .month = 7,
+      .year = 26
+  };
+  rv3028_set_time(&rtc_handle, &initial_time);
 
 
   tusb_rhport_init_t dev_init = {
@@ -154,17 +204,20 @@ int main(void)
 
   tusb_init(0, &dev_init);
 
-
-  
-
-
-  uint32_t last_print_time = 0;
-
-
   uint32_t start_time = HAL_GetTick();
   while (!tud_cdc_connected() && (HAL_GetTick() - start_time < 2000)) {
       tud_task(); // Keep processing USB events while waiting
   }
+  
+  char init_time_buf[16];
+  uint8_t init_hour = initial_time.hours % 12;
+  if (init_hour == 0) init_hour = 12;
+  snprintf(init_time_buf, sizeof(init_time_buf), "%d:%02d", init_hour, initial_time.minutes);
+  lv_label_set_text(ui_Time, init_time_buf);
+  USB_Print("testing...\r\n");
+
+
+
 
 
 
@@ -180,6 +233,27 @@ int main(void)
     /* USER CODE BEGIN 3 */
     tud_task();
     lv_timer_handler();
+    Process_Serial_Commands();
+
+    if (step_sensor_ok && (HAL_GetTick() - last_step_update_time >= STEP_UPDATE_INTERVAL_MS)) {
+      last_step_update_time = HAL_GetTick();
+      lv_label_set_text_fmt(ui_steps, "%u", StepCounter_GetSteps());
+    }
+    if (WristWake_Poll()) {
+    // turn on the display / wake the watch face here
+    lv_label_set_text(ui_steps, "W");
+    
+    }
+
+
+
+    
+
+
+    
+  
+
+
 
   
 
@@ -261,6 +335,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         rtc_interrupt_fired = true;
     }
 
+    if (GPIO_Pin == IMU_INT1_Pin) {   // use your actual pin macro from CubeMX
+      
+      WristWake_OnExti();
+      USB_Print("set...\r\n");
+    }
+
+    /* Replace IMU_INT1_Pin with your actual pin macro */
+  
     
 }
 
@@ -270,7 +352,14 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
     if (hi2c->Instance == I2C1) { 
         rtc_read_complete = true;
     }
+
+    
+
+    
 }
+
+
+
 /* USER CODE END 4 */
 
 /**

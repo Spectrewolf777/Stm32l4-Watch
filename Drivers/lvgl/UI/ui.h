@@ -28,10 +28,11 @@ extern "C" {
 extern lv_obj_t * ui____initial_actions0;
 
 // IMAGES AND IMAGE SETS
-LV_IMG_DECLARE(ui_img_zanmang_loopy_profile_2_png);    // assets/Zanmang_Loopy_profile_2.png
-LV_IMG_DECLARE(ui_img_271117282);    // assets/bluetooth-disconnected_32x32.png
-LV_IMG_DECLARE(ui_img_battery_32x32_png);    // assets/battery_32x32.png
+LV_IMG_DECLARE(ui_img_monster_png);    // assets/monster.png
 LV_IMG_DECLARE(ui_img_shoe_32x32_png);    // assets/shoe_32x32.png
+LV_IMG_DECLARE(ui_img_1418925964);    // assets/bluetooth-disconnected_24x24.png
+LV_IMG_DECLARE(ui_img_1_png);    // assets/1.png
+LV_IMG_DECLARE(ui_img_timer_png);    // assets/timer.png
 
 // UI INIT
 void ui_init(void);

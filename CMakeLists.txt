@@ -81,6 +81,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Src/lsm6dsv16x_stepcounter.c
    Core/Src/lsm6dsv16x_reg.c
    Core/Src/wrist_wake.c
+   Core/Src/rtc_tasks.c
    ${TINYUSB_SOURCES}
    ${LVGL_SOURCES}
    ${UI_SOURCES}

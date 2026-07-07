@@ -42,6 +42,7 @@
 #include "lsm6dsv16x_stepcounter.h"
 #include "lsm6dsv16x_reg.h"
 #include "wrist_wake.h"
+#include "rtc_tasks.h"
 
 /* USER CODE END Includes */
 
@@ -66,7 +67,11 @@ rv3028_handle_t rtc_handle;        /* RV-3028-C7 RTC handle */
 /* USER CODE BEGIN PV */
 extern I2C_HandleTypeDef hi2c1; // Your configured I2C handle
 uint32_t last_rtc_request_time = 0;
+bool displayOn = false;
+uint32_t display_turn_on_time = 0;
 
+// Lookup table for 3-letter day names (1 = Monday, 7 = Sunday)
+const char* days_of_week[] = { "", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 
 
 // Flags to manage the async flow
@@ -169,6 +174,7 @@ int main(void)
   MX_I2C1_Init();
   MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
+  HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_RESET);
 
   lv_init();
   lv_port_disp_init();
@@ -177,7 +183,9 @@ int main(void)
   uint32_t last_step_update_time = 0;
   rv3028_init(&rtc_handle, &hi2c1); // 
   bool step_sensor_ok = StepCounter_Init(&hi2c1);
-if (!step_sensor_ok) {
+
+  if (!step_sensor_ok) {
+
     lv_label_set_text(ui_steps, "--");
   }
 
@@ -189,8 +197,8 @@ if (!step_sensor_ok) {
       .seconds = 0,
       .minutes = 33,
       .hours = 13, // 1:33 PM (using 24-hour format internally)
-      .weekday = 1,
-      .date = 4,
+      .weekday = 2,
+      .date = 7,
       .month = 7,
       .year = 26
   };
@@ -234,28 +242,13 @@ if (!step_sensor_ok) {
     tud_task();
     lv_timer_handler();
     Process_Serial_Commands();
+    rtc_tasks(&rtc_handle); // Entire wrist-wake, RTC update, and  display timer logic 
 
     if (step_sensor_ok && (HAL_GetTick() - last_step_update_time >= STEP_UPDATE_INTERVAL_MS)) {
       last_step_update_time = HAL_GetTick();
       lv_label_set_text_fmt(ui_steps, "%u", StepCounter_GetSteps());
     }
-    if (WristWake_Poll()) {
-    // turn on the display / wake the watch face here
-    lv_label_set_text(ui_steps, "W");
-    
-    }
 
-
-
-    
-
-
-    
-  
-
-
-
-  
 
   }
   /* USER CODE END 3 */

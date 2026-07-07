@@ -43,6 +43,8 @@ https://www.aliexpress.com/item/1005007293053050.html
 - Implement a digital **compass** for accurate heading and orientation sensing.
 - **Motion & Orientation Tracking:** - adding more gestures to control microphone.
 
+<img width="3000" height="4000" alt="nnnn" src="https://github.com/user-attachments/assets/4e4e009c-f669-4896-b754-4356d55145fa" />
+Battery not soldered yet that why i am using usb as coding hasnt finished and wanted to do more current testing.
 
 <img width="2000" height="1600" alt="Untitled design" src="https://github.com/user-attachments/assets/88df3cd3-ec02-4325-b380-abda1396d602" />
 <img width="3000" height="4000" alt="20260705_174336" src="https://github.com/user-attachments/assets/9bec51a4-f078-400a-b80d-fcb8743b5c8c" />

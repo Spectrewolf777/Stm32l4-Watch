@@ -28,8 +28,6 @@ https://oshwlab.com/moin0192837465/project_glmgovsw
 # Display 
 https://www.aliexpress.com/item/1005007293053050.html
 
-
-
 ## Current Software Implementation
 
 - **Dual USB Interface:** Configured via TinyUSB to expose both **CDC (Virtual COM Port)** for serial debugging which can accept commands and **Mass Storage Class (MSC)** for direct file access.
@@ -47,6 +45,9 @@ https://www.aliexpress.com/item/1005007293053050.html
 
 
 <img width="2000" height="1600" alt="Untitled design" src="https://github.com/user-attachments/assets/88df3cd3-ec02-4325-b380-abda1396d602" />
+<img width="3000" height="4000" alt="20260705_174336" src="https://github.com/user-attachments/assets/9bec51a4-f078-400a-b80d-fcb8743b5c8c" />
+
+
 
 ## Programming Instructions
 

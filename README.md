@@ -1,4 +1,6 @@
 
+## Demo Video
+https://www.youtube.com/watch?v=jnEd2pBWlZo
 
 ## Hardware Components
 
@@ -35,7 +37,7 @@ https://www.aliexpress.com/item/1005007293053050.html
 
 ## Planned Software Features
 
-- **RTC:** Need to setup timers to count down on ui and also to update on ui awake.
+- **RTC:** Need to setup timers to count down on ui.
 - **Wireless Connectivity:** Integrate a **Bluetooth** stack to enable smartphone data syncing.
 - Implement a digital **compass** for accurate heading and orientation sensing.
 - **Motion & Orientation Tracking:** - adding more gestures to control microphone.

@@ -23,7 +23,7 @@ https://www.youtube.com/watch?v=jnEd2pBWlZo
 | **Microphone** | `IM68D128BV01XTMA1` | High-performance digital PDM microphone |
 
 # Hardware Open Source Design Location
-https://oshwlab.com/moin0192837465/project_glmgovsw
+https://oshwlab.com/moin0192837465/project_glmgovsw (not published yet waiting for approval so like 1 - 4 days until available )
 
 # Display 
 https://www.aliexpress.com/item/1005007293053050.html

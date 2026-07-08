@@ -28,6 +28,7 @@ https://oshwlab.com/moin0192837465/project_glmgovsw (not published yet waiting f
 # Display 
 https://www.aliexpress.com/item/1005007293053050.html
 
+
 ## Current Software Implementation
 
 - **Dual USB Interface:** Configured via TinyUSB to expose both **CDC (Virtual COM Port)** for serial debugging which can accept commands and **Mass Storage Class (MSC)** for direct file access.
@@ -42,6 +43,10 @@ https://www.aliexpress.com/item/1005007293053050.html
 - **Wireless Connectivity:** Integrate a **Bluetooth** stack to enable smartphone data syncing.
 - Implement a digital **compass** for accurate heading and orientation sensing.
 - **Motion & Orientation Tracking:** - adding more gestures to control microphone.
+- act as a keyboard, mouse , badusb and can communicate through commands.
+- link phone and watch through bluetooth to get other data link weather or whatever you want.
+- Watch can be used in future to control custom project you make later as it has bluetooth and is open source and can be programmer later 
+- store audio recordings and activate audio recording with gestures.
 
 <img width="3000" height="4000" alt="nnnn" src="https://github.com/user-attachments/assets/4e4e009c-f669-4896-b754-4356d55145fa" />
 Battery not soldered yet that why i am using usb as coding hasnt finished and wanted to do more current testing.

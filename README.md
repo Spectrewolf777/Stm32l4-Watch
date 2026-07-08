@@ -28,6 +28,20 @@ https://oshwlab.com/moin0192837465/project_glmgovsw (not published yet waiting f
 # Display 
 https://www.aliexpress.com/item/1005007293053050.html
 
+## Project function
+- Watch is fully configurable through usb c, can act as a keyboard, mouse , badusb and can communicate through commands.
+- Can store audio recordings and activate audio recording with gestures.
+- Track steps
+- Time tracking and stopwatch function
+- Link phone and watch through bluetooth to get other data link weather or whatever you want.
+- Watch can be used in future to control custom project you make later as it has bluetooth and is open source and can be programmer later
+
+## Application Scenarios
+- **Hardware Hackers & Developers:** Because the watch acts as a BadUSB, keyboard, and mouse, it can be used for rapid payload deployment, IT security testing, or simply as a wearable presentation clicker.
+- **Custom Home Automation:** Utilizing the nRF52 BLE chip, makers can pair the watch to Home Assistant or custom ESP32 nodes to control smart home devices directly from their wrist.
+- **Everyday Fitness & Utilities:** With the onboard BMA400 and RTC, it serves as an everyday pedometer, stopwatch, and voice-recorder (saving directly to the NAND flash).
+
+
 
 ## Current Software Implementation
 

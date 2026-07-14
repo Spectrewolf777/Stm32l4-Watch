@@ -23,7 +23,7 @@ https://www.youtube.com/watch?v=jnEd2pBWlZo
 | **Microphone** | `IM68D128BV01XTMA1` | High-performance digital PDM microphone |
 
 # Hardware Open Source Design Location
-https://oshwlab.com/moin0192837465/project_glmgovsw (not published yet waiting for approval so like 1 - 4 days until available )
+https://oshwlab.com/moin0192837465/project_glmgovsw <------- Can be found here it live
 
 # Display 
 https://www.aliexpress.com/item/1005007293053050.html
@@ -34,7 +34,7 @@ https://www.aliexpress.com/item/1005007293053050.html
 - Track steps
 - Time tracking and stopwatch function
 - Link phone and watch through bluetooth to get other data link weather or whatever you want.
-- Watch can be used in future to control custom project you make later as it has bluetooth and is open source and can be programmer later
+- Watch can be used in future to control custom project you make later as it has bluetooth and is open source and can be programmed later
 
 ## Application Scenarios
 - **Hardware Hackers & Developers:** Because the watch acts as a BadUSB, keyboard, and mouse, it can be used for rapid payload deployment, IT security testing, or simply as a wearable presentation clicker.
@@ -59,7 +59,7 @@ https://www.aliexpress.com/item/1005007293053050.html
 - **Motion & Orientation Tracking:** - adding more gestures to control microphone.
 - act as a keyboard, mouse , badusb and can communicate through commands.
 - link phone and watch through bluetooth to get other data link weather or whatever you want.
-- Watch can be used in future to control custom project you make later as it has bluetooth and is open source and can be programmer later 
+- Watch can be used in future to control custom project you make later as it has bluetooth and is open source and can be programmed later 
 - store audio recordings and activate audio recording with gestures.
 
 <img width="3000" height="4000" alt="nnnn" src="https://github.com/user-attachments/assets/4e4e009c-f669-4896-b754-4356d55145fa" />
@@ -94,5 +94,8 @@ This board can be programmed using one of two methods depending on your hardware
 - **Stereo Audio:** Replace the current mono microphone setup with a **stereo microphone**.
 - **Storage Expansion:** Upgrade the onboard flash storage to a **larger capacity** .
 - **NRF53:** Allows ble headphones to connect in order to send audio from sd flash or microphones to headphones.
+- **Screen:** AMOLED Screen.
+- **Sensor:** Add light and any other missing sensors.
+- **XIP:** More storage for ui.
 - **Form Factor & Enclosure Optimization:** - Reduce the overall PCB diameter from **44mm down to 40mm**.
   - Relocate and fix the **battery positioning**.

@@ -29,7 +29,7 @@ https://github.com/Spectrewolf777/Nrf52-code-for-l4-watch
 | **Microphone** | `IM68D128BV01XTMA1` | High-performance digital PDM microphone |
 
 # Hardware Open Source Design Location
-https://oshwlab.com/moin0192837465/project_glmgovsw <------- Can be found here it live
+https://oshwlab.com/moin0192837465/project_glmgovsw <------- sorry i accidently updated description so now it has to get remoderated didnt know about that sorry probably gonna be down for 1-8 days
 
 # Display 
 https://www.aliexpress.com/item/1005007293053050.html

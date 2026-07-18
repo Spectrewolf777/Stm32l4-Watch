@@ -1,6 +1,12 @@
 
 ## Demo Video
-https://www.youtube.com/watch?v=jnEd2pBWlZo
+https://www.youtube.com/watch?v=jnEd2pBWlZo 
+
+## BLE Demo and Setup Video
+https://www.youtube.com/watch?v=e0hORUg1qQ8
+
+## BLE Nrf52 code
+https://github.com/Spectrewolf777/Nrf52-code-for-l4-watch
 
 ## Hardware Components
 

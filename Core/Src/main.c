@@ -22,6 +22,7 @@
 #include "i2c.h"
 #include "sdmmc.h"
 #include "spi.h"
+#include "usart.h"
 #include "usb_otg.h"
 #include "gpio.h"
 
@@ -43,6 +44,7 @@
 #include "lsm6dsv16x_reg.h"
 #include "wrist_wake.h"
 #include "rtc_tasks.h"
+#include "uart_cmd.h"
 
 /* USER CODE END Includes */
 
@@ -66,6 +68,7 @@ rv3028_handle_t rtc_handle;        /* RV-3028-C7 RTC handle */
 
 /* USER CODE BEGIN PV */
 extern I2C_HandleTypeDef hi2c1; // Your configured I2C handle
+extern UART_HandleTypeDef huart1;
 uint32_t last_rtc_request_time = 0;
 bool displayOn = false;
 uint32_t display_turn_on_time = 0;
@@ -73,6 +76,15 @@ uint32_t display_turn_on_time = 0;
 // Lookup table for 3-letter day names (1 = Monday, 7 = Sunday)
 const char* days_of_week[] = { "", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
 
+
+#define RX_RING_BUFFER_SIZE 256
+
+volatile uint8_t rx_buffer[RX_RING_BUFFER_SIZE];
+volatile uint16_t rx_head = 0;
+volatile uint16_t rx_tail = 0;
+
+// HAL needs a designated memory location to put the incoming byte
+uint8_t uart1_rx_byte;
 
 // Flags to manage the async flow
 volatile bool rtc_interrupt_fired = false;
@@ -115,6 +127,32 @@ void I2C_Scanner(I2C_HandleTypeDef *hi2c) {
 }
 
 
+void process_uart_to_usb(void)
+{
+    // Check if we have data and USB CDC is ready
+    if (rx_head != rx_tail && tud_cdc_connected()) {
+        uint32_t available_usb_space = tud_cdc_write_available();
+        
+        if (available_usb_space > 0) {
+            uint8_t temp_buf[64];
+            uint32_t count = 0;
+
+            // Pull data from ring buffer
+            while (rx_head != rx_tail && count < sizeof(temp_buf) && count < available_usb_space) {
+                temp_buf[count++] = rx_buffer[rx_tail];
+                rx_tail = (rx_tail + 1) % RX_RING_BUFFER_SIZE;
+            }
+
+            // Transmit over USB
+            if (count > 0) {
+                tud_cdc_write(temp_buf, count);
+                tud_cdc_write_flush(); 
+            }
+        }
+    }
+}
+
+
 void USB_Print(const char *format, ...)
 {
     // Don't try to send if the USB isn't connected to a host (like a PC terminal)
@@ -134,6 +172,23 @@ void USB_Print(const char *format, ...)
         tud_cdc_write_flush(); // Force the data to send immediately
     }
 }
+
+void USB_Printf(const char *format, ...)
+{
+    if (!tud_cdc_connected()) return;
+
+    char buffer[128]; // Temporary buffer (adjust size if sending longer strings)
+    
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    tud_cdc_write_str(buffer);
+    tud_cdc_write_flush();
+}
+
+
 
 
 /* USER CODE END 0 */
@@ -173,8 +228,12 @@ int main(void)
   MX_SDMMC2_SD_Init();
   MX_I2C1_Init();
   MX_USB_OTG_FS_PCD_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_RESET);
+  HAL_UART_Receive_IT(&huart1, &uart1_rx_byte, 1);
+
+  UART_Cmd_Init(&huart1);
 
   lv_init();
   lv_port_disp_init();
@@ -223,7 +282,7 @@ int main(void)
   snprintf(init_time_buf, sizeof(init_time_buf), "%d:%02d", init_hour, initial_time.minutes);
   lv_label_set_text(ui_Time, init_time_buf);
   USB_Print("testing...\r\n");
-
+  
 
 
 
@@ -242,12 +301,22 @@ int main(void)
     tud_task();
     lv_timer_handler();
     Process_Serial_Commands();
+    Process_UART_Commands();   // Your new nRF52 UART commands
+    process_uart_to_usb();
     rtc_tasks(&rtc_handle); // Entire wrist-wake, RTC update, and  display timer logic 
 
     if (step_sensor_ok && (HAL_GetTick() - last_step_update_time >= STEP_UPDATE_INTERVAL_MS)) {
       last_step_update_time = HAL_GetTick();
       lv_label_set_text_fmt(ui_steps, "%u", StepCounter_GetSteps());
+        const char *current_text = lv_label_get_text(ui_Time);
+        // 2. Copy it into your buffer (make sure init_time_buf is large enough!)
+        strcpy(init_time_buf, current_text);
+        // Send your text with a newline
+        USB_Printf("current time: %s\r\n", current_text);
     }
+
+  
+
 
 
   }
@@ -349,8 +418,30 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
     
 
     
+
 }
 
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    // Make sure the interrupt is coming from UART1
+    if (huart->Instance == USART1) {
+        
+        // 1. FEED THE BYTE TO YOUR COMMAND PARSER!
+        UART_Cmd_FeedByte(uart1_rx_byte);
+        
+        // 2. Keep your existing USB pass-through logic
+        uint16_t next_head = (rx_head + 1) % RX_RING_BUFFER_SIZE;
+        if (next_head != rx_tail) {
+            rx_buffer[rx_head] = uart1_rx_byte;
+            rx_head = next_head;
+        }
+        
+        // 3. Re-arm the interrupt
+        HAL_UART_Receive_IT(&huart1, &uart1_rx_byte, 1);
+    }
+}
 
 
 /* USER CODE END 4 */

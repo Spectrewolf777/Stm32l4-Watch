@@ -157,9 +157,9 @@ void Process_Serial_Commands(void)
             {
                 cmd_buffer[cmd_idx] = '\0'; 
                 
-                // 1. Extract the base command (e.g., "-t")
+                // Extract the base command (e.g., "-t")
                 char *cmd = strtok(cmd_buffer, " ");
-                // 2. Extract the remaining string as arguments (e.g., "14:30:00")
+                // Extract the remaining string as arguments
                 char *args = strtok(NULL, ""); 
                 
                 if (args == NULL) { args = ""; } // Prevent null pointer if no args given
@@ -170,7 +170,7 @@ void Process_Serial_Commands(void)
                 {
                     if (strcmp(cmd, commands[i].cmd) == 0) 
                     {
-                        // Match found, execute the associated handler
+                       
                         commands[i].handler(args);
                         found = true;
                         break;

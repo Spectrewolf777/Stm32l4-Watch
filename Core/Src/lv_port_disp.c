@@ -160,6 +160,6 @@ void GC9A01_FlushReady(void){
 
 #else /*Enable this file at the top*/
 
-/*This dummy typedef exists purely to silence -Wpedantic.*/
+/* dummy typedef exists .*/
 typedef int keep_pedantic_happy;
 #endif

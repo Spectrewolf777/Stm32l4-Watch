@@ -90,7 +90,8 @@ This board can be programmed using one of two methods depending on your hardware
   - **Limitation:** This method **cannot** program the nRF52 chip, meaning you will not have BLE functionality out of the box. 
   - **Hardware Note:** If you are omitting BLE, you can completely disconnect the BLE circuit by desoldering the **0 $\Omega$ resistor** located in the BLE section of the board.
 
-
+CNC Aluminum Case
+## <img width="1894" height="3264" alt="20260729_210127" src="https://github.com/user-attachments/assets/b4b6c6af-3ee1-41a1-8c96-507016830dd6" />
 
 
 ## Things to improve on next pcb design

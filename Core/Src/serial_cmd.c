@@ -43,7 +43,7 @@ static void cdc_print(const char *str) {
         if (written == 0) {
             // Buffer full – let TinyUSB process the outgoing data
             tud_task();
-            // A tiny delay can help if tud_task alone doesn't free space quickly
+           
         } else {
             sent += written;
         }

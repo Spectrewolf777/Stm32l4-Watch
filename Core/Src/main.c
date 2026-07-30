@@ -251,7 +251,7 @@ int main(void)
   WristWake_Init(&hi2c1);
 
 
-  // 2. Set the initial time (e.g., 1:50 PM as shown in your SquareLine image)
+  // 2. Set the initial time in your SquareLine image)
   rv3028_time_t initial_time = {
       .seconds = 0,
       .minutes = 33,
@@ -301,7 +301,7 @@ int main(void)
     tud_task();
     lv_timer_handler();
     Process_Serial_Commands();
-    Process_UART_Commands();   // Your new nRF52 UART commands
+    Process_UART_Commands();   // new nRF52 UART commands
     process_uart_to_usb();
     rtc_tasks(&rtc_handle); // Entire wrist-wake, RTC update, and  display timer logic 
 
@@ -309,7 +309,6 @@ int main(void)
       last_step_update_time = HAL_GetTick();
       lv_label_set_text_fmt(ui_steps, "%u", StepCounter_GetSteps());
         const char *current_text = lv_label_get_text(ui_Time);
-        // 2. Copy it into your buffer (make sure init_time_buf is large enough!)
         strcpy(init_time_buf, current_text);
         // Send your text with a newline
         USB_Printf("current time: %s\r\n", current_text);
@@ -397,7 +396,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         rtc_interrupt_fired = true;
     }
 
-    if (GPIO_Pin == IMU_INT1_Pin) {   // use your actual pin macro from CubeMX
+    if (GPIO_Pin == IMU_INT1_Pin) {   
       
       WristWake_OnExti();
       USB_Print("set...\r\n");
@@ -428,10 +427,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     // Make sure the interrupt is coming from UART1
     if (huart->Instance == USART1) {
         
-        // 1. FEED THE BYTE TO YOUR COMMAND PARSER!
+        // 1. COMMAND PARSER!
         UART_Cmd_FeedByte(uart1_rx_byte);
         
-        // 2. Keep your existing USB pass-through logic
+        // 2. existing USB pass-through logic
         uint16_t next_head = (rx_head + 1) % RX_RING_BUFFER_SIZE;
         if (next_head != rx_tail) {
             rx_buffer[rx_head] = uart1_rx_byte;

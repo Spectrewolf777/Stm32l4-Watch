@@ -12,16 +12,12 @@ extern rv3028_handle_t rtc_handle;
 static char cmd_buffer[MAX_CMD_LEN];
 static uint8_t cmd_idx = 0;
 
-/* ============================================================================ */
-/* Command Handlers (Add new handler prototypes here)                           */
-/* ============================================================================ */
+
 static void cmd_help(const char *args);
 static void cmd_set_time(const char *args);
 static void cmd_set_date(const char *args);
 
-/* ============================================================================ */
-/* Command Table Structure                                                      */
-/* ============================================================================ */
+
 typedef struct {
     const char *cmd;                   // Command string (e.g., "-t")
     const char *help_text;             // Description for the help menu
@@ -37,9 +33,6 @@ static const SerialCommand_t commands[] = {
 
 #define NUM_COMMANDS (sizeof(commands) / sizeof(commands[0]))
 
-/* ============================================================================ */
-/* Handler Implementations                                                      */
-/* ============================================================================ */
 
 // Send a complete string over USB CDC, blocking until all bytes are queued.
 static void cdc_print(const char *str) {
@@ -93,7 +86,7 @@ static void cmd_set_time(const char *args)
             printf("\r\n[SUCCESS] Time updated to %02d:%02d:%02d\r\n", 
                    new_time.hours, new_time.minutes, new_time.seconds);
                    
-            // --- NEW: Update the LVGL UI immediately ---
+            // Update the LVGL UI immediately
             // Convert to 12-hour format for the display
             uint8_t display_hour = new_time.hours % 12;
             if (display_hour == 0) display_hour = 12; // Handle midnight/noon
@@ -146,9 +139,6 @@ static void cmd_set_date(const char *args)
     fflush(stdout);
 }
 
-/* ============================================================================ */
-/* Main Processing Loop                                                         */
-/* ============================================================================ */
 
 void Process_Serial_Commands(void) 
 {

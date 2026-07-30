@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "UI/ui.h"
-// Bring in the RTC handle initialized in main.c
+
 extern rv3028_handle_t rtc_handle;
 
 #define MAX_CMD_LEN 64
@@ -41,14 +41,14 @@ static void cdc_print(const char *str) {
     while (sent < len) {
         uint32_t written = tud_cdc_write(str + sent, len - sent);
         if (written == 0) {
-            // Buffer full – let TinyUSB process the outgoing data
+           
             tud_task();
            
         } else {
             sent += written;
         }
     }
-    // Force the final partial packet out immediately
+    
     tud_cdc_write_flush();
 }
 
@@ -86,7 +86,7 @@ static void cmd_set_time(const char *args)
             printf("\r\n[SUCCESS] Time updated to %02d:%02d:%02d\r\n", 
                    new_time.hours, new_time.minutes, new_time.seconds);
                    
-            // Update the LVGL UI immediately
+            
             // Convert to 12-hour format for the display
             uint8_t display_hour = new_time.hours % 12;
             if (display_hour == 0) display_hour = 12; // Handle midnight/noon
@@ -164,7 +164,7 @@ void Process_Serial_Commands(void)
                 
                 if (args == NULL) { args = ""; } // Prevent null pointer if no args given
 
-                // 3. Search the command table
+                // Search the command table
                 bool found = false;
                 for (int i = 0; i < NUM_COMMANDS; i++) 
                 {

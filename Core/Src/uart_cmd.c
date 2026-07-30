@@ -67,7 +67,7 @@ static const UartCommand_t commands[] = {
 // Send a string back to the nRF52
 static void uart_print(const char *str) {
     if (nrf_uart_handle == NULL) return;
-    //HAL_UART_Transmit(nrf_uart_handle, (uint8_t*)str, strlen(str), HAL_MAX_DELAY); //add later when you fix nrf52 to rx info to display on phone
+    //HAL_UART_Transmit(nrf_uart_handle, (uint8_t*)str, strlen(str), HAL_MAX_DELAY); 
     USB_Print(str);
 }
 

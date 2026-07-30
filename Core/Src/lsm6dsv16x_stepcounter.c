@@ -73,11 +73,7 @@ bool StepCounter_Init(I2C_HandleTypeDef *hi2c)
   /* Gyro isn't needed for pedometer/tilt - leave it off to save power */
   lsm6dsv16x_gy_data_rate_set(&s_ctx, LSM6DSV16X_ODR_OFF);
  
-  /* Accelerometer config. 120 Hz / 2g are the values ST validated in its
-   * own pedometer & tilt reference examples. If you want to shave power
-   * for a wearable you can try a lower ODR (e.g. LSM6DSV16X_ODR_AT_30Hz) -
-   * the embedded engines are designed to run across a range of ODRs, but
-   * only 120 Hz is what ST's examples explicitly test. */
+
   lsm6dsv16x_xl_full_scale_set(&s_ctx, LSM6DSV16X_2g);
   lsm6dsv16x_xl_data_rate_set(&s_ctx, LSM6DSV16X_ODR_AT_120Hz);
  

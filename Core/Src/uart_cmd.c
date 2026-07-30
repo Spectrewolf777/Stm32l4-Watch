@@ -6,7 +6,7 @@
 #include "UI/ui.h"
 #include "main.h"
 
-// Bring in the RTC handle initialized in main.c
+// RTC handle initialized in main.c
 extern rv3028_handle_t rtc_handle;
 
 // Pointer to the UART handle used for nRF52 communication
@@ -17,25 +17,19 @@ extern void USB_Print(const char *format, ...);
 
 
 
-/* ============================================================================ */
-/* Ring Buffer for UART RX                                                      */
-/* ============================================================================ */
+
 #define UART_RX_BUF_SIZE 256
 static volatile uint8_t rx_ring_buf[UART_RX_BUF_SIZE];
 static volatile uint16_t rx_head = 0;
 static volatile uint16_t rx_tail = 0;
 static uint8_t rx_temp_byte; // Used by HAL_UART_Receive_IT
 
-/* ============================================================================ */
-/* Command Buffer                                                               */
-/* ============================================================================ */
+
 #define MAX_CMD_LEN 64
 static char cmd_buffer[MAX_CMD_LEN];
 static uint8_t cmd_idx = 0;
 
-/* ============================================================================ */
-/* Command Handlers (Add new handler prototypes here)                           */
-/* ============================================================================ */
+
 static void cmd_help(const char *args);
 static void cmd_set_time(const char *args);
 static void cmd_set_date(const char *args);
@@ -46,8 +40,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
     // If the error occurred on our nRF52 UART connection
     if (huart == nrf_uart_handle) 
     {
-        // The HAL driver automatically clears the error flags for us,
-        // but it aborts the reception. We just need to restart it!
+       
         HAL_UART_Receive_IT(nrf_uart_handle, (uint8_t*)&rx_temp_byte, 1);
     }
 }
@@ -70,9 +63,6 @@ static const UartCommand_t commands[] = {
 
 #define NUM_COMMANDS (sizeof(commands) / sizeof(commands[0]))
 
-/* ============================================================================ */
-/* Helper Functions                                                             */
-/* ============================================================================ */
 
 // Send a string back to the nRF52
 static void uart_print(const char *str) {
@@ -104,9 +94,6 @@ static char uart_read_char(void) {
     return c;
 }
 
-/* ============================================================================ */
-/* Handler Implementations                                                      */
-/* ============================================================================ */
 
 static void cmd_help(const char *args) {
     uart_print("\r\n--- nRF52 Supported Commands ---\r\n");
@@ -170,9 +157,6 @@ static void cmd_set_date(const char *args) {
     }
 }
 
-/* ============================================================================ */
-/* Initialization & Interrupt Handling                                          */
-/* ============================================================================ */
 
 void UART_Cmd_Init(UART_HandleTypeDef *huart) {
     nrf_uart_handle = huart;
@@ -184,7 +168,7 @@ void Process_UART_Commands(void) {
     static uint32_t last_rx_time = 0;
     bool ready_to_execute = false;
 
-    // 1. Read all available bytes from the ring buffer
+    // Read all available bytes from the ring buffer
     while (uart_available()) {
         last_rx_time = HAL_GetTick(); // Record the exact time we got a character
         char c = uart_read_char();
@@ -206,15 +190,14 @@ void Process_UART_Commands(void) {
         }
     }
 
-    // 2. Idle Timeout: If we have text waiting, but no real "Enter" key was sent,
-    // wait 50ms. If no new bytes arrive, assume the BLE packet is finished.
+    // Idle Timeout If no new bytes arrive, assume the BLE packet is finished.
     if (cmd_idx > 0 && !ready_to_execute) {
         if ((HAL_GetTick() - last_rx_time) > 50) {
             ready_to_execute = true;
         }
     }
 
-    // 3. Execute the command
+    //  Execute the command
     if (ready_to_execute && cmd_idx > 0) {
         
         // Clean up if the user manually typed a literal "/n" or "\n" at the end

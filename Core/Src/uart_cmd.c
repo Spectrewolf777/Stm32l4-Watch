@@ -6,10 +6,10 @@
 #include "UI/ui.h"
 #include "main.h"
 
-// RTC handle initialized in main.c
+// RTC handle
 extern rv3028_handle_t rtc_handle;
 
-// Pointer to the UART handle used for nRF52 communication
+
 static UART_HandleTypeDef *nrf_uart_handle = NULL;
 
 extern void USB_Print(const char *format, ...);
@@ -22,7 +22,7 @@ extern void USB_Print(const char *format, ...);
 static volatile uint8_t rx_ring_buf[UART_RX_BUF_SIZE];
 static volatile uint16_t rx_head = 0;
 static volatile uint16_t rx_tail = 0;
-static uint8_t rx_temp_byte; // Used by HAL_UART_Receive_IT
+static uint8_t rx_temp_byte; 
 
 
 #define MAX_CMD_LEN 64
@@ -168,7 +168,7 @@ void Process_UART_Commands(void) {
     static uint32_t last_rx_time = 0;
     bool ready_to_execute = false;
 
-    // Read all available bytes from the ring buffer
+    // Read all available bytes 
     while (uart_available()) {
         last_rx_time = HAL_GetTick(); // Record the exact time we got a character
         char c = uart_read_char();
@@ -186,11 +186,11 @@ void Process_UART_Commands(void) {
             cmd_buffer[cmd_idx++] = c;
         } 
         else {
-            cmd_idx = 0; // Buffer overflow safeguard
+            cmd_idx = 0; // Buffer overflow 
         }
     }
 
-    // Idle Timeout If no new bytes arrive, assume the BLE packet is finished.
+    // Idle Timeout 
     if (cmd_idx > 0 && !ready_to_execute) {
         if ((HAL_GetTick() - last_rx_time) > 50) {
             ready_to_execute = true;
@@ -200,7 +200,7 @@ void Process_UART_Commands(void) {
     //  Execute the command
     if (ready_to_execute && cmd_idx > 0) {
         
-        // Clean up if the user manually typed a literal "/n" or "\n" at the end
+        // Clean up 
         if (cmd_idx >= 2 && (cmd_buffer[cmd_idx-2] == '\\' || cmd_buffer[cmd_idx-2] == '/') && cmd_buffer[cmd_idx-1] == 'n') {
             cmd_idx -= 2;
         }
@@ -232,7 +232,7 @@ void Process_UART_Commands(void) {
     }
 }
 
-// Feed a byte directly into the command ring buffer
+// Feed a byte directly into the buffer
 void UART_Cmd_FeedByte(uint8_t c) {
     uint16_t next_head = (rx_head + 1) % UART_RX_BUF_SIZE;
     if (next_head != rx_tail) {

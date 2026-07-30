@@ -67,7 +67,7 @@ rv3028_handle_t rtc_handle;        /* RV-3028-C7 RTC handle */
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-extern I2C_HandleTypeDef hi2c1; // Your configured I2C handle
+extern I2C_HandleTypeDef hi2c1; // I2C handle
 extern UART_HandleTypeDef huart1;
 uint32_t last_rtc_request_time = 0;
 bool displayOn = false;
@@ -83,10 +83,10 @@ volatile uint8_t rx_buffer[RX_RING_BUFFER_SIZE];
 volatile uint16_t rx_head = 0;
 volatile uint16_t rx_tail = 0;
 
-// HAL needs a designated memory location to put the incoming byte
+
 uint8_t uart1_rx_byte;
 
-// Flags to manage the async flow
+// Flags 
 volatile bool rtc_interrupt_fired = false;
 volatile bool rtc_read_complete = false;
 #define STEP_UPDATE_INTERVAL_MS   1000U   /* how often to poll/refresh ui_steps */
@@ -119,7 +119,7 @@ void I2C_Scanner(I2C_HandleTypeDef *hi2c) {
             printf("Device found at address: 0x%02X\r\n", i);
             fflush(stdout);
         }
-        tud_task();  // <-- service USB every iteration so CDC actually drains
+        tud_task();  
     }
     printf("Scanner Complete.\r\n");
     fflush(stdout);
@@ -155,7 +155,7 @@ void process_uart_to_usb(void)
 
 void USB_Print(const char *format, ...)
 {
-    // Don't try to send if the USB isn't connected to a host (like a PC terminal)
+    // Don't try to send if the USB isn't connected
     if (!tud_cdc_connected()) {
         return; 
     }
@@ -177,7 +177,7 @@ void USB_Printf(const char *format, ...)
 {
     if (!tud_cdc_connected()) return;
 
-    char buffer[128]; // Temporary buffer (adjust size if sending longer strings)
+    char buffer[128]; // Temporary buffer 
     
     va_list args;
     va_start(args, format);
@@ -251,7 +251,7 @@ int main(void)
   WristWake_Init(&hi2c1);
 
 
-  // 2. Set the initial time in your SquareLine image)
+  // Set the initial time in your SquareLine image)
   rv3028_time_t initial_time = {
       .seconds = 0,
       .minutes = 33,
@@ -301,7 +301,7 @@ int main(void)
     tud_task();
     lv_timer_handler();
     Process_Serial_Commands();
-    Process_UART_Commands();   // new nRF52 UART commands
+    Process_UART_Commands();   // nRF52 UART commands
     process_uart_to_usb();
     rtc_tasks(&rtc_handle); // Entire wrist-wake, RTC update, and  display timer logic 
 
@@ -402,7 +402,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
       USB_Print("set...\r\n");
     }
 
-    /* Replace IMU_INT1_Pin with your actual pin macro */
+   
   
     
 }
@@ -427,17 +427,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     // Make sure the interrupt is coming from UART1
     if (huart->Instance == USART1) {
         
-        // 1. COMMAND PARSER!
+        // COMMAND PARSER!
         UART_Cmd_FeedByte(uart1_rx_byte);
         
-        // 2. existing USB pass-through logic
+        // existing USB pass-through logic
         uint16_t next_head = (rx_head + 1) % RX_RING_BUFFER_SIZE;
         if (next_head != rx_tail) {
             rx_buffer[rx_head] = uart1_rx_byte;
             rx_head = next_head;
         }
         
-        // 3. Re-arm the interrupt
+        // Re-arm the interrupt
         HAL_UART_Receive_IT(&huart1, &uart1_rx_byte, 1);
     }
 }

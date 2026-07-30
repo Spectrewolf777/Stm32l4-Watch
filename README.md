@@ -104,5 +104,7 @@ CNC Aluminum Case
 - **Screen:** AMOLED Screen.
 - **Sensor:** Add light and any other missing sensors.
 - **XIP:** More storage for ui.
+- **GPS:** Allows coordinates but also better tracking of activities like running and maybe add similar to google maps but locally no internet. Can also allow time to sync directly UTC from satellites rather then phone.
+- **Quality of life:** add a coin cell for rtc backup to retain battery life longer. Better battery mounting position. 
 - **Form Factor & Enclosure Optimization:** - Reduce the overall PCB diameter from **44mm down to 40mm**.
   - Relocate and fix the **battery positioning**.

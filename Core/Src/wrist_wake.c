@@ -1,16 +1,8 @@
-/**
-  ******************************************************************************
-  * @file    wrist_wake.c
-  * @brief   Wake-on-wrist-tilt gesture, using the LSM6DSV16X's embedded
-  *          "tilt" detector (register-level access via ST's official
-  *          lsm6dsv16x_reg.c/.h driver). Configuration mirrors ST's own
-  *          validated "lsm6dsv16x_tilt.c" reference example.
-  ******************************************************************************
-  */
+
 #include "wrist_wake.h"
 #include "lsm6dsv16x_reg.h"
 
-/* ---- module-private state ------------------------------------------------ */
+
 static stmdev_ctx_t         s_ctx;
 static I2C_HandleTypeDef   *s_hi2c        = NULL;
 static bool                  s_ready       = false;
@@ -18,9 +10,8 @@ static volatile bool         s_irq_pending = false;
 
 #define LSM6DSV16X_I2C_TIMEOUT_MS   100U
 
-/* ---- platform glue: STM32 HAL I2C ----------------------------------------- */
-/* Duplicated (rather than shared with step_counter.c) on purpose, so this
- * module stays a fully standalone, drop-in .c/.h pair. */
+
+
 static int32_t platform_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t len)
 {
   HAL_StatusTypeDef status = HAL_I2C_Mem_Write((I2C_HandleTypeDef *)handle,
@@ -41,7 +32,7 @@ static int32_t platform_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t 
   return (status == HAL_OK) ? 0 : -1;
 }
 
-/* ---- public API ------------------------------------------------------------ */
+
 bool WristWake_Init(I2C_HandleTypeDef *hi2c)
 {
   uint8_t whoami = 0;

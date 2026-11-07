@@ -8,6 +8,8 @@
 #include "mic.h"
 #include "cst816t.h"
 #include "power_mon.h"
+#include "weather.h"
+#include "uart_cmd.h"
 #include "main.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,10 +19,12 @@
 #define COL_ACCENT   0x1190F4
 #define COL_DIM      0x5A6B7A
 #define COL_ALERT    0xF45B11
+#define COL_LIGHT    0xFFC83D
+#define LIGHT_ACK_TIMEOUT_MS 1500U
 #define UI_REFRESH_MS 200U
 
 /* ---- Pages -------------------------------------------------------------- */
-enum { PAGE_FACE, PAGE_SENSORS, PAGE_COMPASS, PAGE_STOPWATCH, PAGE_TIMER, PAGE_VOICE, PAGE_COUNT };
+enum { PAGE_FACE, PAGE_SENSORS, PAGE_COMPASS, PAGE_STOPWATCH, PAGE_TIMER, PAGE_VOICE, PAGE_LIGHT, PAGE_COUNT };
 static lv_obj_t *s_pages[PAGE_COUNT];
 static uint8_t   s_page;
 
@@ -42,6 +46,11 @@ static uint32_t  s_tm_set_s = 300, s_tm_end, s_tm_left_s = 300;
 /* voice recorder */
 static lv_obj_t *s_rec_btn, *s_rec_btn_lbl, *s_rec_time, *s_rec_info, *s_rec_meter;
 static lv_obj_t *s_rec_badge;
+/* lights (server Tapo bulb via nRF52 BLE broadcast) */
+static lv_obj_t *s_lt_btn, *s_lt_btn_lbl, *s_lt_state, *s_lt_info;
+static bool      s_lt_on;               /* last state we asked for */
+static bool      s_lt_waiting;          /* sent, waiting for the nRF52 ack */
+static uint32_t  s_lt_sent_at;
 /* timer alarm vibration */
 static uint8_t   s_alarm_left;
 static uint32_t  s_alarm_next;
@@ -168,12 +177,23 @@ static void update_sensors(void)
         snprintf(bat, sizeof bat, "Battery  %u%%  %u.%02uV%s", d->bat_percent,
                  d->bat_mv / 1000, (d->bat_mv % 1000) / 10, Power_OnUsb() ? " +" : "");
 
+    const weather_t *wx = Weather_Get();
+    char fc[40];
+    if (wx->valid)
+        snprintf(fc, sizeof fc, "%s %s", wx->arrow < 0 ? LV_SYMBOL_DOWN : wx->arrow > 0 ? LV_SYMBOL_UP : "-",
+                 wx->text);
+    else
+        snprintf(fc, sizeof fc, "Forecast in %u min",
+                 (unsigned)(wx->hours_x10 >= 10 ? 0 : 60 - wx->hours_x10 * 6));
+
     snprintf(buf, sizeof buf,
+             "%s\n"
              "Temp  %s C\n"
              "Humidity  %s %%\n"
              "Pressure  %lu.%lu hPa\n"
              "Altitude  %ld m\n"
              "%s",
+             fc,
              d->env_ok || d->baro_ok ? t : "--",
              d->env_ok ? h : "--",
              (unsigned long)(d->pressure_pa / 100), (unsigned long)((d->pressure_pa % 100) / 10),
@@ -524,6 +544,76 @@ void UI_RecorderChanged(void)
     if (s_rec_btn) rec_refresh_button();
 }
 
+/* ---- Lights page -------------------------------------------------------- */
+static void light_show(void)
+{
+    if (!s_lt_btn) return;
+    lv_obj_set_style_bg_color(s_lt_btn, lv_color_hex(s_lt_on ? COL_LIGHT : 0x26323D), 0);
+    lv_obj_set_style_shadow_width(s_lt_btn, s_lt_on ? 30 : 0, 0);
+    lv_obj_set_style_shadow_color(s_lt_btn, lv_color_hex(COL_LIGHT), 0);
+    lv_obj_set_style_text_color(s_lt_btn_lbl, lv_color_hex(s_lt_on ? 0x000000 : 0xFFFFFF), 0);
+    lv_label_set_text(s_lt_state, s_lt_on ? "ON" : "OFF");
+    lv_obj_set_style_text_color(s_lt_state, lv_color_hex(s_lt_on ? COL_LIGHT : COL_DIM), 0);
+}
+
+/* cmd: 0 = off, 1 = on, 2 = toggle (sent as the command byte to the nRF52) */
+static void light_send(uint8_t cmd)
+{
+    Haptic(HAPTIC_TICK);
+    s_lt_on = (cmd == 2) ? !s_lt_on : (cmd == 1);
+    light_show();
+    if (UART_Cmd_SendLight(cmd)) {
+        s_lt_waiting = true;
+        s_lt_sent_at = HAL_GetTick();
+        lv_label_set_text(s_lt_info, "sending...");
+    } else {
+        s_lt_waiting = false;
+        lv_label_set_text(s_lt_info, "UART error");
+    }
+}
+
+static void lt_toggle_cb(lv_event_t *e) { (void)e; light_send(2); }  /* toggle */
+static void lt_on_cb(lv_event_t *e)     { (void)e; light_send(1); }
+static void lt_off_cb(lv_event_t *e)    { (void)e; light_send(0); }
+
+void UI_LightAck(bool ok)
+{
+    s_lt_waiting = false;
+    if (s_lt_info) lv_label_set_text(s_lt_info, ok ? "sent " LV_SYMBOL_OK : "BLE error");
+}
+
+/* Runs even with the screen off */
+static void light_service(void)
+{
+    if (s_lt_waiting && HAL_GetTick() - s_lt_sent_at > LIGHT_ACK_TIMEOUT_MS) {
+        s_lt_waiting = false;
+        lv_label_set_text(s_lt_info, "no reply from nRF52");
+    }
+}
+
+static void build_light(void)
+{
+    lv_obj_t *s = s_pages[PAGE_LIGHT] = make_screen();
+    make_label(s, &lv_font_montserrat_14, COL_ACCENT, 0, -88, "Lights");
+
+    s_lt_btn = lv_button_create(s);
+    lv_obj_set_size(s_lt_btn, 80, 80);
+    lv_obj_align(s_lt_btn, LV_ALIGN_CENTER, 0, -34);
+    lv_obj_set_style_radius(s_lt_btn, LV_RADIUS_CIRCLE, 0);
+    lv_obj_add_event_cb(s_lt_btn, lt_toggle_cb, LV_EVENT_CLICKED, NULL);
+    s_lt_btn_lbl = lv_label_create(s_lt_btn);
+    lv_obj_set_style_text_font(s_lt_btn_lbl, &lv_font_montserrat_48, 0);
+    lv_label_set_text(s_lt_btn_lbl, LV_SYMBOL_POWER);
+    lv_obj_center(s_lt_btn_lbl);
+
+    s_lt_state = make_label(s, &lv_font_montserrat_14, COL_DIM, 0, 18, "OFF");
+    make_button(s, "Off", -46, 52, 72, lt_off_cb, NULL);
+    make_button(s, "On",   46, 52, 72, lt_on_cb, NULL);
+    s_lt_info = make_label(s, &lv_font_montserrat_12, COL_DIM, 0, 86, "tap to switch");
+    page_dots(s, PAGE_LIGHT);
+    light_show();
+}
+
 /* ---- Notification popup ------------------------------------------------- */
 static void notif_close(void)
 {
@@ -628,6 +718,7 @@ void UI_Watch_Init(void)
     build_stopwatch();
     build_timer();
     build_voice();
+    build_light();
 
     s_page = PAGE_FACE;
     UI_SetBleConnected(false);
@@ -639,6 +730,7 @@ void UI_Watch_Task(void)
 
     timer_service();
     alarm_service();
+    light_service();
 
     /* Screen turned off: stay on the current page so waking returns you
      * to it. Only close popups and cancel half-done compass steps. */
@@ -682,5 +774,6 @@ void UI_Watch_Task(void)
     case PAGE_STOPWATCH: update_stopwatch(); break;
     case PAGE_TIMER:     break;              /* updated by timer_service */
     case PAGE_VOICE:     update_voice();     break;
+    case PAGE_LIGHT:     break;              /* event driven */
     }
 }

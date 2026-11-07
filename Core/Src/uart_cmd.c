@@ -24,7 +24,8 @@ extern void USB_Print(const char *format, ...);
 static volatile uint8_t rx_ring_buf[UART_RX_BUF_SIZE];
 static volatile uint16_t rx_head = 0;
 static volatile uint16_t rx_tail = 0;
-static uint8_t rx_temp_byte; 
+/* Byte that main.c's HAL_UART_RxCpltCallback reads and forwards to us */
+extern uint8_t uart1_rx_byte;
 
 
 #define MAX_CMD_LEN 64
@@ -39,15 +40,19 @@ static void cmd_notify(const char *args);
 static void cmd_weather(const char *args);
 static void cmd_ble(const char *args);
 static void cmd_sensors(const char *args);
+static void cmd_light_ack(const char *args);
 
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
     // If the error occurred on our nRF52 UART connection
-    if (huart == nrf_uart_handle) 
+    if (huart == nrf_uart_handle)
     {
-       
-        HAL_UART_Receive_IT(nrf_uart_handle, (uint8_t*)&rx_temp_byte, 1);
+        /* Clear overrun/noise/framing flags, then re-arm into the SAME byte the
+         * RX-complete callback reads. (Re-arming into a different variable made
+         * every byte after the first UART error arrive as a stale copy.) */
+        __HAL_UART_CLEAR_FLAG(huart, UART_CLEAR_OREF | UART_CLEAR_NEF | UART_CLEAR_FEF | UART_CLEAR_PEF);
+        HAL_UART_Receive_IT(nrf_uart_handle, &uart1_rx_byte, 1);
     }
 }
 
@@ -68,7 +73,8 @@ static const UartCommand_t commands[] = {
     {"-n", "Notification popup. Format: -n <text>", cmd_notify},
     {"-w", "Weather text. Format: -w <text>", cmd_weather},
     {"-ble", "Phone connected state. Format: -ble <0/1>", cmd_ble},
-    {"-s", "Reply with sensor data (one CSV line)", cmd_sensors}
+    {"-s", "Reply with sensor data (one CSV line)", cmd_sensors},
+    {"-lt", "nRF52 light ack. Format: -lt <0/1/2/e>", cmd_light_ack}
 };
 
 #define NUM_COMMANDS (sizeof(commands) / sizeof(commands[0]))
@@ -181,10 +187,21 @@ static void cmd_sensors(const char *args) {
                 (unsigned long)d->pressure_pa, (long)d->altitude_m, d->heading_deg, d->steps);
 }
 
+/* nRF52 confirms it broadcast the light command ("e" = failed) */
+static void cmd_light_ack(const char *args) { UI_LightAck(args[0] != 'e' && args[0] != '\0'); }
+
+/* Ask the nRF52 to broadcast a light command to the server.
+ * cmd: 0 = off, 1 = on, 2 = toggle */
+bool UART_Cmd_SendLight(uint8_t cmd) {
+    if (nrf_uart_handle == NULL || cmd > 2) return false;
+    char msg[] = "#LIGHT:0\n";
+    msg[7] = (char)('0' + cmd);
+    return HAL_UART_Transmit(nrf_uart_handle, (uint8_t *)msg, sizeof(msg) - 1, 20) == HAL_OK;
+}
+
 void UART_Cmd_Init(UART_HandleTypeDef *huart) {
     nrf_uart_handle = huart;
-    // Start listening for the first byte via interrupt
-    HAL_UART_Receive_IT(nrf_uart_handle, &rx_temp_byte, 1);
+    // RX interrupt is already armed in main.c (into uart1_rx_byte)
 }
 
 void Process_UART_Commands(void) {

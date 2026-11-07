@@ -101,6 +101,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Src/recorder.c
    Core/Src/power_mon.c
    Core/Src/sd_glue.c
+   Core/Src/weather.c
    Core/Src/rtc_tasks.c
    Core/Src/uart_cmd.c
    ${TINYUSB_SOURCES}

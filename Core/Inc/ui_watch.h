@@ -2,7 +2,8 @@
  *  Extra screens built in code (kept out of the SquareLine-generated files so
  *  re-exporting the UI never overwrites them) + swipe navigation.
  *
- *  Swipe left / right:  Watchface <-> Sensors <-> Compass <-> Stopwatch <-> Timer <-> Voice
+ *  Swipe left / right:  Watchface <-> Sensors <-> Compass <-> Stopwatch <-> Timer <-> Voice <-> Lights
+ *  (Lights wraps around: one swipe right from the watchface)
  *  Swipe down: back to watchface.  Double tap on watchface: start/stop recording.
  */
 #ifndef UI_WATCH_H
@@ -18,6 +19,7 @@ void UI_Watch_Task(void);      /* call from main loop       */
 void UI_ShowNotification(const char *text);   /* popup + buzz + wake screen */
 void UI_SetWeather(const char *text);         /* shown on the sensors page  */
 void UI_SetBleConnected(bool connected);
+void UI_LightAck(bool ok);                    /* nRF52 confirmed the light broadcast */
 
 /* Call after starting/stopping the recorder from outside the UI (serial cmd) */
 void UI_RecorderChanged(void);

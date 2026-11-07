@@ -17,6 +17,7 @@
 #include "recorder.h"
 #include "mic.h"
 #include "power_mon.h"
+#include "weather.h"
 #include "bsp_driver_sd.h"
 
 extern rv3028_handle_t rtc_handle;
@@ -44,6 +45,7 @@ static void cmd_pwr(const char *args);
 static void cmd_sd(const char *args);
 static void cmd_log(const char *args);
 static void cmd_format(const char *args);
+static void cmd_wx(const char *args) { (void)args; Weather_PrintReport(); }
 static void cmd_mag(const char *args) { (void)args; Compass_PrintDebug(); }
 
 
@@ -73,7 +75,8 @@ static const SerialCommand_t commands[] = {
     {"-sd", "Check the flash: card info + what filesystem is on it", cmd_sd},
     {"-log", "Print the time every second: -log on | -log off", cmd_log},
     {"-format", "ERASE flash and make it FAT32: -format yes", cmd_format},
-    {"-mag", "Compass debug: raw magnetometer, accelerometer, heading", cmd_mag}
+    {"-mag", "Compass debug: raw magnetometer, accelerometer, heading", cmd_mag},
+    {"-wx", "Barometer weather forecast + pressure history", cmd_wx}
 };
 
 #define NUM_COMMANDS (sizeof(commands) / sizeof(commands[0]))

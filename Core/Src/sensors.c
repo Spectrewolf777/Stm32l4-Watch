@@ -9,6 +9,7 @@
 #include "lsm6dsv16x_stepcounter.h"
 #include "rtc_tasks.h"
 #include "power_mon.h"
+#include "weather.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -69,6 +70,7 @@ void Sensors_Init(void)
     DRV2605L_Init();
 
     BMP388_SetSeaLevel(Settings_Get()->sea_level_pa);
+    Weather_Init();                 /* reload pressure history from EEPROM */
     s_data.heading_deg = -1;
 }
 
@@ -143,6 +145,8 @@ void Sensors_Task(void)
         due(&t_compass, s_fast_compass ? FAST_COMPASS_MS : SLOW_COMPASS_MS)) {
         s_data.heading_deg = Compass_Heading();
     }
+
+    Weather_Task();                 /* pressure sample every 10 min */
 
     s_data.steps = StepCounter_GetSteps();
     s_first = false;

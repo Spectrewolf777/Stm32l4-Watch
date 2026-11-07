@@ -1,7 +1,7 @@
 #ifndef RV_3028_C7_H
 #define RV_3028_C7_H
 
-#include "stm32L4xx_hal.h" // CHANGE THIS to your specific STM32 family header
+#include "stm32l4xx_hal.h" // CHANGE THIS to your specific STM32 family header
 #include <stdint.h>
 #include <stdbool.h>
 

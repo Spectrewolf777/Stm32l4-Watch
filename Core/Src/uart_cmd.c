@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include "UI/ui.h"
 #include "main.h"
+#include "ui_watch.h"
+#include "sensors.h"
 
 // RTC handle
 extern rv3028_handle_t rtc_handle;
@@ -33,6 +35,10 @@ static uint8_t cmd_idx = 0;
 static void cmd_help(const char *args);
 static void cmd_set_time(const char *args);
 static void cmd_set_date(const char *args);
+static void cmd_notify(const char *args);
+static void cmd_weather(const char *args);
+static void cmd_ble(const char *args);
+static void cmd_sensors(const char *args);
 
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
@@ -58,7 +64,11 @@ typedef struct {
 static const UartCommand_t commands[] = {
     {"-h", "Show this help menu", cmd_help},
     {"-t", "Set time. Format: -t HH:MM:SS", cmd_set_time},
-    {"-d", "Set date. Format: -d DD/MM/YY W (1=Mon, 7=Sun)", cmd_set_date}
+    {"-d", "Set date. Format: -d DD/MM/YY W (1=Mon, 7=Sun)", cmd_set_date},
+    {"-n", "Notification popup. Format: -n <text>", cmd_notify},
+    {"-w", "Weather text. Format: -w <text>", cmd_weather},
+    {"-ble", "Phone connected state. Format: -ble <0/1>", cmd_ble},
+    {"-s", "Reply with sensor data (one CSV line)", cmd_sensors}
 };
 
 #define NUM_COMMANDS (sizeof(commands) / sizeof(commands[0]))
@@ -157,6 +167,19 @@ static void cmd_set_date(const char *args) {
     }
 }
 
+
+static void cmd_notify(const char *args)  { UI_ShowNotification(args); }
+static void cmd_weather(const char *args) { UI_SetWeather(args); }
+static void cmd_ble(const char *args)     { UI_SetBleConnected(atoi(args) != 0); }
+
+static void cmd_sensors(const char *args) {
+    (void)args;
+    const sensors_data_t *d = Sensors_Get();
+    /* S,<bat%>,<mV>,<charging>,<temp x10>,<RH x10>,<Pa>,<alt m>,<heading>,<steps> */
+    uart_printf("S,%u,%u,%u,%d,%u,%lu,%ld,%d,%u\r\n",
+                d->bat_percent, d->bat_mv, d->bat_charging, d->temp_x10, d->humidity_x10,
+                (unsigned long)d->pressure_pa, (long)d->altitude_m, d->heading_deg, d->steps);
+}
 
 void UART_Cmd_Init(UART_HandleTypeDef *huart) {
     nrf_uart_handle = huart;

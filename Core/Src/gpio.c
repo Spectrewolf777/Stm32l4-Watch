@@ -55,7 +55,7 @@ void MX_GPIO_Init(void)
                           |DC_Pin|SDEnable_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, CS_Pin|DRV2605_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : rtc_int_Pin */
   GPIO_InitStruct.Pin = rtc_int_Pin;
@@ -77,11 +77,11 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : IMU_INT1_Pin */
-  GPIO_InitStruct.Pin = IMU_INT1_Pin;
+  /*Configure GPIO pins : IMU_INT1_Pin PWR_ST_Pin BAT_ALERT_Pin */
+  GPIO_InitStruct.Pin = IMU_INT1_Pin|PWR_ST_Pin|BAT_ALERT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(IMU_INT1_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : TP_RST_Pin RST_Pin DC_Pin */
   GPIO_InitStruct.Pin = TP_RST_Pin|RST_Pin|DC_Pin;
@@ -103,12 +103,22 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(CS_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : DRV2605_EN_Pin */
+  GPIO_InitStruct.Pin = DRV2605_EN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(DRV2605_EN_GPIO_Port, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
   HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);

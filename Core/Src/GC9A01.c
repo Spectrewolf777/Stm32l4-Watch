@@ -2,7 +2,7 @@
 
 
 
-#include "gc9a01.h"
+#include "GC9A01.h"
 
 extern SPI_HandleTypeDef GC9A01_SPI;
 
@@ -44,15 +44,14 @@ void GC9A01_WriteData(uint8_t data)
 
 void GC9A01_WriteDataBuffer(uint8_t *data, uint32_t size)
 {
+	/* Always blocking: these are tiny parameter writes (often from stack
+	 * buffers). Using DMA here let the next command start while the DMA was
+	 * still running, so window commands got dropped -> glitchy redraws.
+	 * Only GC9A01_Flush() uses DMA for the big pixel transfers. */
 	GC9A01_Select();
 	GC9A01_DC_Data();
-#if USE_DMA
-	tx_busy = 1;
-	HAL_SPI_Transmit_DMA(&GC9A01_SPI, data, size);
-#else
 	HAL_SPI_Transmit(&GC9A01_SPI, data, size, GC9A01_SPI_TIMEOUT);
 	GC9A01_Unselect();
-#endif
 }
 
 // === SET ADDRESS WINDOW ===

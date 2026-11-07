@@ -59,6 +59,11 @@ file(GLOB_RECURSE UI_SOURCES
 )
 
 
+# LVGL at -O0 is several times slower and makes animations choppy / tear more.
+# Compile the graphics library and generated UI with -O2 even in Debug builds;
+# your own code keeps the Debug -O0 so it is still easy to step through.
+set_source_files_properties(${LVGL_SOURCES} ${UI_SOURCES} PROPERTIES COMPILE_OPTIONS "-O2")
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
@@ -81,6 +86,21 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
    Core/Src/lsm6dsv16x_stepcounter.c
    Core/Src/lsm6dsv16x_reg.c
    Core/Src/wrist_wake.c
+   Core/Src/cst816t.c
+   Core/Src/lv_port_indev.c
+   Core/Src/i2c_dev.c
+   Core/Src/max17048.c
+   Core/Src/hdc2010.c
+   Core/Src/bmp388.c
+   Core/Src/lis3mdl.c
+   Core/Src/drv2605l.c
+   Core/Src/m24512.c
+   Core/Src/sensors.c
+   Core/Src/ui_watch.c
+   Core/Src/mic.c
+   Core/Src/recorder.c
+   Core/Src/power_mon.c
+   Core/Src/sd_glue.c
    Core/Src/rtc_tasks.c
    Core/Src/uart_cmd.c
    ${TINYUSB_SOURCES}

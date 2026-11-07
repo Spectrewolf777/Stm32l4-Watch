@@ -69,6 +69,12 @@ void Error_Handler(void);
 #define IMU_INT1_EXTI_IRQn EXTI3_IRQn
 #define TP_RST_Pin GPIO_PIN_4
 #define TP_RST_GPIO_Port GPIOA
+#define PWR_ST_Pin GPIO_PIN_5
+#define PWR_ST_GPIO_Port GPIOA
+#define PWR_ST_EXTI_IRQn EXTI9_5_IRQn
+#define BAT_ALERT_Pin GPIO_PIN_6
+#define BAT_ALERT_GPIO_Port GPIOA
+#define BAT_ALERT_EXTI_IRQn EXTI9_5_IRQn
 #define TP_INT_Pin GPIO_PIN_0
 #define TP_INT_GPIO_Port GPIOB
 #define TP_INT_EXTI_IRQn EXTI0_IRQn
@@ -80,6 +86,8 @@ void Error_Handler(void);
 #define DC_GPIO_Port GPIOA
 #define SDEnable_Pin GPIO_PIN_15
 #define SDEnable_GPIO_Port GPIOA
+#define DRV2605_EN_Pin GPIO_PIN_5
+#define DRV2605_EN_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

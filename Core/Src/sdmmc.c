@@ -45,11 +45,15 @@ void MX_SDMMC2_SD_Init(void)
   hsd2.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd2.Init.ClockDiv = 1;
   hsd2.Init.Transceiver = SDMMC_TRANSCEIVER_DISABLE;
+  /* USER CODE BEGIN SDMMC2_Init 2 */
+  /* With FatFs enabled, CubeMX stops calling HAL_SD_Init() here (it expects
+   * FatFs to do it on mount). FatFs is set to DISABLE_SD_INIT because the
+   * card is shared with USB mass storage, so initialise it once here. */
   if (HAL_SD_Init(&hsd2) != HAL_OK)
   {
-    Error_Handler();
+    /* Card not responding: leave it uninitialised rather than hang the
+     * watch. USB MSC / recorder will report "not ready". */
   }
-  /* USER CODE BEGIN SDMMC2_Init 2 */
 
   /* USER CODE END SDMMC2_Init 2 */
 

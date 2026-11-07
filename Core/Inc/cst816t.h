@@ -1,84 +1,103 @@
-/* CST816T capacitive touch-screen driver for STM32 HAL.
- * Adapted from Koen De Vleeschauwer's Arduino driver.
- */
-
+/**
+  ******************************************************************************
+  * @file    cst816t.h
+  * @brief   CST816T capacitive touch controller driver (STM32L4 HAL, I2C2).
+  *
+  * The CST816T on this 1.28" GC9A01 module reports raw X/Y but its on-chip
+  * gesture register is unreliable / empty on this firmware revision, so all
+  * gestures (tap, double tap, long press, swipes) are worked out here on the
+  * MCU from the raw coordinates. The chip's own gesture byte is ignored.
+  *
+  * Sleep behaviour:
+  *  - Screen ON : auto-sleep disabled -> chip always answers on I2C.
+  *  - Screen OFF: auto-sleep enabled  -> chip drops into low-power scan and
+  *                stops answering I2C (NACKs). A touch wakes it and it pulses
+  *                TP_INT, which is what wakes the watch screen.
+  *  All I2C errors are tolerated, nothing here blocks forever.
+  ******************************************************************************
+  */
 #ifndef CST816T_H
 #define CST816T_H
 
-#include "stm32f1xx_hal.h"
+#include "main.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-#define address   0x15  //slave address
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define GESTUREID 0x01 //gesture code
-#define None 0x00 		//no gesture
-#define UP 0x01 		//slide up
-#define Down 0x02 		//slide down
-#define LEFT 0x03		//Swipe left
-#define RIGHT 0x04		//Swipe right
-#define CLICK 0x05		//click
-#define DOUBLE_CLICK 0x0B//double click
-#define LONG_PRESS 0x0C	//Press
+/* Panel resolution and coordinate correction (set if touch looks mirrored) */
+#define CST816T_RES_X        240
+#define CST816T_RES_Y        240
+#define CST816T_SWAP_XY      0
+#define CST816T_MIRROR_X     0
+#define CST816T_MIRROR_Y     0
 
-#define FingerNum 0X02
-#define XposH 0x03 //X coordinate high 4 digits
-#define XposL 0x04 //The lower 8 bits of the X coordinate
-#define YposH 0x05 //High 4 digits of Y coordinate
-#define YposL 0x06 //The lower 8 bits of the Y coordinate
+/* Software gesture tuning */
+#define CST816T_SWIPE_MIN_PX        40U   /* min travel for a swipe          */
+#define CST816T_TAP_MAX_MOVE_PX     15U   /* max travel still counted as tap */
+#define CST816T_LONG_PRESS_MS      700U   /* hold time for a long press      */
+#define CST816T_DOUBLE_TAP_MS      300U   /* max gap between taps            */
 
-#define BPC0H 0xB0 //High 8 bits of BPC0 value
-#define BPC0L 0xB1 //The lower 8 bits of the BPC0 value
-#define BPC1H 0xB2 //The upper 8 bits of the BPC1 value
-#define BPC1L 0xB3 //The lower 8 bits of the BPC1 value
-#define ChipID 0xA7 //Chip model
-#define ProjID 0xA8 //Project Number
+typedef enum {
+    CST816T_GESTURE_NONE = 0,
+    CST816T_GESTURE_SWIPE_UP,
+    CST816T_GESTURE_SWIPE_DOWN,
+    CST816T_GESTURE_SWIPE_LEFT,
+    CST816T_GESTURE_SWIPE_RIGHT,
+    CST816T_GESTURE_TAP,
+    CST816T_GESTURE_DOUBLE_TAP,
+    CST816T_GESTURE_LONG_PRESS,
+} cst816t_gesture_t;
 
-#define FwVersion 0xA9 //software version number
+typedef struct {
+    uint8_t chip_id;     /* 0xB5 = CST816T, 0xB4 = CST816S, 0xB6 = CST816D */
+    uint8_t proj_id;
+    uint8_t fw_version;
+    bool    present;
+} cst816t_info_t;
 
-#define MotionMask 0xEC
-#define EnConLR  0x04 //Enable continuous left and right swipe actions
-#define EnConUD  0x02 //Enable continuous up and down sliding action
-#define EnDClick 0x01 //Enable double-click action
+/** Reset + configure the controller. Never blocks forever.
+ *  @retval true if the chip answered. Touch still works later if false
+ *          (e.g. it was asleep), the driver keeps retrying config. */
+bool CST816T_Init(I2C_HandleTypeDef *hi2c);
 
-#define IrqPluseWidth 0xED //Interrupt low pulse output width unit 0.1ms, optional value: 1~200, default value is 10
+/** Call from HAL_GPIO_EXTI_Callback() for TP_INT_Pin. ISR-safe (flag only). */
+void CST816T_OnExti(void);
 
-#define NorScanPer 0xEE //Normal fast detection cycle unit 10ms, optional value: 1~30, default value is 1
+/** Call every main-loop iteration. Does the I2C reads and gesture maths. */
+void CST816T_Process(void);
 
-#define MotionSlAngle 0xEF //Gesture detection sliding partition angle control Angle=tan(c)*10
-							//c is the angle based on the positive direction of the x-axis
-#define LpScanRaw1H 0xF0 //Low power consumption scans the upper 8 bits of the reference value of channel 1
-#define LpScanRaw1L 0xF1 //Low power scan the lower 8 bits of the reference value of channel 1
-#define LpScanRaw2H 0xF2 //Low power consumption scans the upper 8 bits of the reference value of channel 1
-#define LpScanRaw2L 0xF3 //Low power scan the lower 8 bits of the reference value of channel 1
+/** Current finger state. Returns true while pressed; x/y always hold the
+ *  last known point (may be NULL). */
+bool CST816T_GetPoint(uint16_t *x, uint16_t *y);
 
-#define LpAutoWakeTime 0xF4 //Auto-recalibration cycle at low power consumption Unit: 1 minute, optional value: 1~5. The default value is 5
-#define LpScanTH 0xF5 //Low power scan wake-up threshold. The smaller the value, the more sensitive it is. Available values: 1-255. The default value is 48
-#define LpScanWin 0xF6 //Low power scan range. The larger the value, the more sensitive and the higher the power consumption. Available values: 0, 1, 2, 3. The default value is 3
-#define LpScanFreq 0xF7 //Low power consumption scan frequency The smaller the more sensitive the optional value: 1~255. The default value is 7
-#define LpScanIdac 0xF8 //Low power consumption scanning current The smaller the more sensitive Optional value: 1～255
-#define AutoSleepTime 0xF9 //When there is no touch within x seconds, it will automatically enter the low power consumption mode. The unit is 1S, and the default value is 2S.
+/** Pops the last completed software gesture (NONE if nothing new). */
+cst816t_gesture_t CST816T_GetGesture(void);
 
-#define IrqCtl 0xFA
-#define EnTest 0x80 //Interrupt pin test, automatically sends out low pulses periodically after enabling
-#define EnTouch 0x40 //When a touch is detected, periodically emit a low pulse
-#define EnChange 0x20 //Sends a low pulse when a touch state change is detected
-#define EnMotion 0x10 //When a gesture is detected, emit a low pulse
-#define OnceWLP 0x00 //The long press gesture only sends out a low pulse signal
+/** Returns true (once) if any touch activity happened since last call:
+ *  an INT pulse or a new press. Used for touch-to-wake and to keep the
+ *  screen awake while it's being used. */
+bool CST816T_ActivityPending(void);
 
-#define AutoReset 0xFB //When there is a touch but no valid gesture within x seconds, it will automatically reset. The unit 1S is not enabled when it is 0. The default is 5.
-#define LongPressTime 0xFC //Press and hold for x seconds to reset automatically. Unit 1S is not enabled when it is 0. The default is 10.
-#define IOCtl 0xFD //
-#define SOFT_RST 0x04 //Enable soft reset
-#define IIC_OD 0x02 //OD
-#define En1v8  0x01 //1.8V
+/** true  = let the chip auto-sleep (screen off, wake on touch)
+ *  false = keep the chip awake (screen on, fast response)
+ *  Applied immediately if possible, otherwise retried on next Process(). */
+void CST816T_SetAutoSleep(bool enable);
 
-#define DisAutoSleep 0xFE //The default is 0, enabling automatic entry into low power consumption mode; non-zero value, prohibiting automatic entry into low power consumption mode
+const cst816t_info_t *CST816T_GetInfo(void);
+const char *CST816T_GestureName(cst816t_gesture_t g);
 
+/** Don't report any gesture for the finger that is currently down
+ *  (used for the touch that wakes the screen). */
+void CST816T_IgnoreCurrentTouch(void);
 
+/** Print every touch / gesture over USB CDC (for testing). */
+void CST816T_SetDebug(bool on);
 
+#ifdef __cplusplus
+}
+#endif
 
-
-
-
-#endif // CST816T_H
+#endif /* CST816T_H */

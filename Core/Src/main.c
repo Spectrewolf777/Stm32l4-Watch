@@ -18,7 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dfsdm.h"
 #include "dma.h"
+#include "fatfs.h"
 #include "i2c.h"
 #include "sdmmc.h"
 #include "spi.h"
@@ -42,7 +44,13 @@
 #include "serial_cmd.h"
 #include "lsm6dsv16x_stepcounter.h"
 #include "lsm6dsv16x_reg.h"
-#include "wrist_wake.h"
+#include "cst816t.h"
+#include "lv_port_indev.h"
+#include "sensors.h"
+#include "ui_watch.h"
+#include "mic.h"
+#include "recorder.h"
+#include "power_mon.h"
 #include "rtc_tasks.h"
 #include "uart_cmd.h"
 
@@ -68,8 +76,10 @@ rv3028_handle_t rtc_handle;        /* RV-3028-C7 RTC handle */
 
 /* USER CODE BEGIN PV */
 extern I2C_HandleTypeDef hi2c1; // I2C handle
+extern I2C_HandleTypeDef hi2c2; // touch I2C
 extern UART_HandleTypeDef huart1;
 uint32_t last_rtc_request_time = 0;
+bool g_time_log = false;   /* "-log on" prints the time every second */
 bool displayOn = false;
 uint32_t display_turn_on_time = 0;
 
@@ -229,6 +239,8 @@ int main(void)
   MX_I2C1_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_USART1_UART_Init();
+  MX_DFSDM1_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_RESET);
   HAL_UART_Receive_IT(&huart1, &uart1_rx_byte, 1);
@@ -237,8 +249,11 @@ int main(void)
 
   lv_init();
   lv_port_disp_init();
+  CST816T_Init(&hi2c2);          // touch controller (I2C2, INT on PB0)
+  lv_port_indev_init();          // feed touch into LVGL
   //lv_example_anim_2();
   ui_init();
+  UI_Watch_Init();               // extra pages + swipe navigation
   uint32_t last_step_update_time = 0;
   rv3028_init(&rtc_handle, &hi2c1); // 
   bool step_sensor_ok = StepCounter_Init(&hi2c1);
@@ -248,7 +263,11 @@ int main(void)
     lv_label_set_text(ui_steps, "--");
   }
 
-  WristWake_Init(&hi2c1);
+  // Screen wake is now done by touch (see rtc_tasks.c), IMU tilt wake removed
+
+  Sensors_Init();                // EEPROM settings, fuel gauge, HDC2010, BMP388, LIS3MDL, DRV2605L
+  Power_Init();                  // PA5 USB power status, PA6 battery alert
+  Mic_Init();                    // DFSDM: Sinc3 x125 -> 16 kHz, mic clock off until recording
 
 
   // Set the initial time in your SquareLine image)
@@ -261,7 +280,15 @@ int main(void)
       .month = 7,
       .year = 26
   };
-  rv3028_set_time(&rtc_handle, &initial_time);
+  // Only set the default time if the RTC has never been set (or lost power),
+  // so a reset doesn't wipe the real time.
+  rv3028_time_t rtc_now;
+  if (rv3028_get_time(&rtc_handle, &rtc_now) != HAL_OK || rtc_now.year < 26 ||
+      rtc_now.month < 1 || rtc_now.month > 12) {
+    rv3028_set_time(&rtc_handle, &initial_time);
+  } else {
+    initial_time = rtc_now;
+  }
 
 
   tusb_rhport_init_t dev_init = {
@@ -299,11 +326,16 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     tud_task();
+    CST816T_Process();       // read touch before LVGL / wake logic use it
     lv_timer_handler();
     Process_Serial_Commands();
     Process_UART_Commands();   // nRF52 UART commands
     process_uart_to_usb();
-    rtc_tasks(&rtc_handle); // Entire wrist-wake, RTC update, and  display timer logic 
+    rtc_tasks(&rtc_handle); // Touch-wake, RTC update, and display timer logic
+    Sensors_Task();         // battery, temp/humidity, pressure, compass, haptics
+    UI_Watch_Task();        // page updates, countdown timer, notifications
+    Recorder_Task();        // mic audio -> WAV file on flash
+    Power_Task();           // USB plug/unplug, low battery alert
 
     if (step_sensor_ok && (HAL_GetTick() - last_step_update_time >= STEP_UPDATE_INTERVAL_MS)) {
       last_step_update_time = HAL_GetTick();
@@ -311,7 +343,7 @@ int main(void)
         const char *current_text = lv_label_get_text(ui_Time);
         strcpy(init_time_buf, current_text);
         // Send your text with a newline
-        USB_Printf("current time: %s\r\n", current_text);
+        if (g_time_log) USB_Printf("current time: %s\r\n", current_text);
     }
 
   
@@ -396,10 +428,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
         rtc_interrupt_fired = true;
     }
 
-    if (GPIO_Pin == IMU_INT1_Pin) {   
-      
-      WristWake_OnExti();
-      USB_Print("set...\r\n");
+    if (GPIO_Pin == TP_INT_Pin) {
+      CST816T_OnExti();
+    }
+
+    if (GPIO_Pin == PWR_ST_Pin || GPIO_Pin == BAT_ALERT_Pin) {
+      Power_OnExti(GPIO_Pin);
     }
 
    

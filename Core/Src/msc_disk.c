@@ -37,17 +37,33 @@ volatile bool dma_tx_done = false;
 static bool is_reading = false;
 static bool is_writing = false;
 
+/* Set while the watch itself is writing the filesystem (voice recorder).
+ * The PC then sees "no medium", and "medium changed" once it's released. */
+static bool msc_locked = false;
+static bool msc_media_changed = false;
 
-void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd2) {
-    if (hsd2->Instance == SDMMC2) { // Or whichever SDMMC you are using
-        dma_rx_done = true;
-    }
+bool MSC_Lock(void)
+{
+    if (is_reading || is_writing) return false;   /* PC transfer in flight */
+    msc_locked = true;
+    return true;
 }
 
-void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd2) {
-    if (hsd2->Instance == SDMMC2) {
-        dma_tx_done = true;
-    }
+void MSC_Unlock(void)
+{
+    if (msc_locked) msc_media_changed = true;
+    msc_locked = false;
+}
+
+
+// FatFs (bsp_driver_sd.c) owns HAL_SD_Rx/TxCpltCallback and forwards them here.
+// Only SDMMC2 is used, so no instance check is needed.
+void BSP_SD_ReadCpltCallback(void) {
+    dma_rx_done = true;
+}
+
+void BSP_SD_WriteCpltCallback(void) {
+    dma_tx_done = true;
 }
 
 
@@ -95,10 +111,18 @@ uint32_t tud_msc_inquiry2_cb(uint8_t lun, scsi_inquiry_resp_t *inquiry_resp, uin
 bool tud_msc_test_unit_ready_cb(uint8_t lun) {
   (void) lun;
 
-  // RAM disk is ready until ejected
-  if (ejected) {
-    // Additional Sense 3A-00 is NOT_FOUND
-    return tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
+  // Not ready while ejected or while the watch is writing the filesystem
+  if (ejected || msc_locked) {
+    // Additional Sense 3A-00 is MEDIUM NOT PRESENT
+    tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
+    return false;
+  }
+
+  // After the watch wrote files, tell the PC to re-read the disk
+  if (msc_media_changed) {
+    msc_media_changed = false;
+    tud_msc_set_sense(lun, SCSI_SENSE_UNIT_ATTENTION, 0x28, 0x00);
+    return false;
   }
 
   return true;
@@ -148,6 +172,7 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void *buff
 
     // If we haven't started reading yet, trigger the DMA
     if (!is_reading) {
+        if (msc_locked) { tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00); return -1; }
         uint32_t block_count = bufsize / 512;
         
         dma_rx_done = false;
@@ -180,6 +205,7 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t *
 
     // If we haven't started writing yet, trigger the DMA
     if (!is_writing) {
+        if (msc_locked) { tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00); return -1; }
         uint32_t block_count = bufsize / 512;
 
         dma_tx_done = false;

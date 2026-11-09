@@ -1,114 +1,216 @@
+# Open-Source Sound Alert Smartwatch
 
-## BLE Nrf52 code
-https://github.com/Spectrewolf777/Nrf52-code-for-l4-watch
+An open-source smartwatch that helps deaf and hard-of-hearing people notice important sounds. It listens with its own microphone and alerts the wearer with vibration and on-screen text for **smoke and carbon monoxide alarms, door knocks, doorbells and sirens**.
 
-## Hardware Components
+All audio is processed on the watch, with no phone or internet connection needed.
 
-| Component | Part Number | Description / Function |
+Built around the **STM32L4P5** and **nRF52805**, with an **LVGL** touch UI on a round 240×240 display and **TinyUSB** over USB-C. The hardware design, firmware, training code and 3D case are open; only ST's AI runtime is proprietary and is downloaded separately.
+
+> **Safety note:** this is an assistive prototype, not a certified life-safety device. Use it alongside certified strobe or bed-shaker alarms, not instead of them.
+
+<img width="2000" height="1600" alt="Smartwatch" src="https://github.com/user-attachments/assets/88df3cd3-ec02-4325-b380-abda1396d602" />
+
+## Links
+
+| | |
+|---|---|
+| Sound alerts demo | https://www.youtube.com/shorts/HwIivaiX0Go|
+| General demo | https://www.youtube.com/watch?v=jnEd2pBWlZo |
+| BLE demo and setup | https://www.youtube.com/watch?v=e0hORUg1qQ8 |
+| PCB and hardware files | https://oshwlab.com/moin0192837465/project_glmgovsw |
+| nRF52 BLE firmware | https://github.com/Spectrewolf777/Nrf52-code-for-l4-watch |
+| Sound alerts documentation | [docs/SOUND_ALERTS.md](docs/SOUND_ALERTS.md) |
+| Model training code | [training/](training/) |
+
+## How sound alerts work
+
+Two detectors run side by side on the STM32:
+
+| Detector | Listens for | How it works |
+|---|---|---|
+| **Neural network** | Alarms, door knocks, doorbells, sirens | Small int8 CNN on log-mel audio features |
+| **Beep-pattern rules** | Standard smoke (T3) and CO (T4) alarm patterns | Tracks a steady ~3 kHz tone and its beep rhythm; no training needed |
+
+
+**When a sound is detected:**
+- A popup such as `DOOR KNOCK` or `CARBON MONOXIDE ALARM` wakes the screen.
+- The watch vibrates even if button haptics are off, with longer vibration for alarms and sirens.
+- The Sound page shows the last alert and turns listening on or off.
+
+**Model:** about 32k parameters, 3.0M MACC, 31 KB weights and 22 KB activation RAM, deployed with ST Edge AI Core.
+
+**Training data:** FSD50K clips licensed CC0 or CC-BY, plus synthetic alarm sounds. Every clip is credited in [`training/ATTRIBUTION_FSD50K.csv`](training/ATTRIBUTION_FSD50K.csv).
+
+**Improving it yourself:** the Voice page can label recordings (ALARM, KNOCK, BELL, SIREN, BG), so new training data can be captured through the watch's own microphone.
+
+## Current results
+
+An earlier version of the neural network detected a carbon monoxide alarm on the real watch, both up close and through a wall.
+
+**Neural network, held-out real recordings, per ~1 s window:**
+
+| Class | Correct |
+|---|---|
+| Background (no alert) | 92.0% |
+| Doorbell | 78.7% |
+| Door knock | 67.9% |
+| Siren | 54.7% |
+| Alarm | 42.5% |
+| **Overall** | **85.0%** |
+
+These are per-window figures. A sound lasting several seconds gets repeated chances to be caught. On 1.6 hours of dense, varied background audio, simulated firmware logic gave about 14 false alerts per hour at a 0.9 threshold and 27 per hour at 0.8. The firmware uses 0.85.
+
+**Beep-pattern detector, PC simulation** (synthetic alarms with timing variation and room echo, mixed into real background audio at -10 to +20 dB SNR):
+
+| Measure | Result |
+|---|---|
+| Smoke alarm detected within 30 s | 80–100% (median 7.6 s) |
+| CO alarm detected within 30 s | 76–96% (median 13.5 s) |
+| False alerts in 16.3 h of background audio | 0 |
+
+**Known limits:**
+- The beep detector does not cover 520 Hz low-frequency alarms or non-standard beepers.
+- The neural network still needs recordings made through the watch to reduce false alerts.
+- Battery life while listening has not been measured yet.
+
+## Features
+
+**Sound alerts**
+- On-device detection of alarms, knocks, doorbells and sirens.
+- Self-test at boot that compares the watch's results with values computed on a PC.
+- The recorder and detectors can share the microphone at the same time.
+
+**Touch UI**
+- Swipe between **Watchface → Sensors → Compass → Stopwatch → Timer → Voice → Sound → Lights**. Swipe down returns to the watchface.
+- Touch to wake, returning to the page you were on.
+
+**Watch functions**
+- Time, day and date from the RV-3028 RTC.
+- Step count, battery percentage and Bluetooth status.
+- Stopwatch and countdown timer with vibration alarm.
+- Double-tap the watchface to start or stop a voice recording.
+
+**Sensors**
+- Temperature, humidity, pressure and altitude.
+- Barometer weather forecast with a storm alert.
+- Tilt-compensated compass using gyroscope, accelerometer and magnetometer fusion, with on-watch calibration.
+
+**Voice recorder**
+- 16 kHz WAV files saved to the onboard 512 MB flash.
+- Recordings appear on your PC over USB-C.
+
+**Connectivity**
+- USB-C serial console and mass storage.
+- Nordic UART bridge over BLE for setting the time, notifications and weather text.
+- Lights page: controls a Tapo smart bulb through BLE adverts and a small Python script, with no pairing.
+
+## Hardware
+
+| Component | Part Number | Function |
 | :--- | :--- | :--- |
-| **MCU** | `STM32L4P5CGU6` | Ultra-low-power ARM Cortex-M4 Microcontroller |
-| **Wireless** | `NRF52805-CAAA-R` | Bluetooth Low Energy (BLE) 5.2 SoC |
-| **PMIC / Charger** | `BQ25101YFPR` | Single-cell Li-Ion/Li-Pol battery charger |
-| **Battery Protection** | `XB5350D0` | Integrated Lithium battery protection IC |
-| **Fuel Gauge** | `MAX17048G+T10` | Ultra-low power ModelGauge Li+ battery fuel gauge |
-| **Accelerometer** | `BMA400` | Ultra-low-power 3-axis accelerometer (pedometer/activity) |
-| **IMU** | `LSM6DSV16XTR` | 6-axis IMU with embedded Machine Learning Core |
-| **Magnetometer** | `LIS3MDLTR` | 3-axis digital magnetic sensor (compass) |
-| **EEPROM** | `M24512-DFMC6TG` | 512-Kbit serial I2C EEPROM |
-| **RTC** | `RV-3028-C7` | Ultra-clean, 1ppm high-stability real-time clock module |
-| **Haptic Driver** | `DRV2605LYZFR` | ERM/LRA haptic driver with built-in library |
-| **Humidity / Temp** | `HDC2010YPAR` | Low-power digital humidity and temperature sensor |
-| **Barometer** | `BMP388` | High-performance digital barometric pressure sensor |
-| **NAND Flash** | `XTSDG04GWSIGA` | Onboard high-density SPI flash storage |
-| **Microphone** | `IM68D128BV01XTMA1` | High-performance digital PDM microphone |
+| **MCU** | `STM32L4P5CGU6` | Ultra-low-power Cortex-M4F; runs the sound detectors |
+| **Microphone** | `IM68D128BV01XTMA1` | Digital PDM microphone |
+| **Haptic Driver** | `DRV2605LYZFR` | Vibration alerts |
+| **Wireless** | `NRF52805-CAAA-R` | Bluetooth Low Energy 5.2 SoC |
+| **Display** | `GC9A01` 1.28" 240×240 | Round IPS LCD over SPI |
+| **Touch** | `CST816T` | Capacitive touch controller |
+| **Storage** | `XTSDG04GWSIGA` | 4 Gbit (512 MB) SD NAND over SDMMC, FAT32 |
+| **Charger** | `BQ25101YFPR` | Single-cell Li-ion/Li-Po charger |
+| **Power Path** | `LM66200` | Dual ideal diode for battery/USB switching |
+| **Battery Protection** | `XB5350D0` | Lithium battery protection IC |
+| **Fuel Gauge** | `MAX17048G+T10` | Battery percentage and low-battery alert |
+| **IMU** | `LSM6DSV16XTR` | 6-axis IMU, pedometer and sensor hub |
+| **Magnetometer** | `LIS3MDLTR` | Compass, connected through the IMU sensor hub |
+| **Accelerometer** | `BMA400` | Fitted but unused in this revision (wiring error) |
+| **EEPROM** | `M24512-DFMC6TG` | Settings and weather history |
+| **RTC** | `RV-3028-C7` | Low-power, high-accuracy real-time clock |
+| **Humidity / Temp** | `HDC2010YPAR` | Humidity and temperature sensor |
+| **Barometer** | `BMP388` | Altitude and weather trend |
 
-# Hardware Open Source Design Location
-https://oshwlab.com/moin0192837465/project_glmgovsw <------- Can be found here all files
+**Display:** https://www.aliexpress.com/item/1005007293053050.html
 
-# Display 
-https://www.aliexpress.com/item/1005007293053050.html
+<img width="3000" height="4000" alt="Watch hardware" src="https://github.com/user-attachments/assets/4e4e009c-f669-4896-b754-4356d55145fa" />
+<img width="3000" height="4000" alt="Watch assembly" src="https://github.com/user-attachments/assets/9bec51a4-f078-400a-b80d-fcb8743b5c8c" />
 
-## Project function
-- Watch is fully configurable through usb c, can act as a keyboard, mouse , badusb and can communicate through commands.
-- Can store audio recordings and activate audio recording with gestures.
-- Track steps
-- Time tracking and stopwatch function
-- Link phone and watch through bluetooth to get other data link weather or whatever you want.
-- Watch can be used in future to control custom project you make later as it has bluetooth and is open source and can be programmed later
+**CNC aluminium case**
 
-## Application Scenarios
-- **Hardware Hackers & Developers:** Because the watch acts as a BadUSB, keyboard, and mouse, it can be used for rapid payload deployment, IT security testing, or simply as a wearable presentation clicker.
-- **Custom Home Automation:** Utilizing the nRF52 BLE chip, makers can pair the watch to Home Assistant or custom ESP32 nodes to control smart home devices directly from their wrist.
-- **Everyday Fitness & Utilities:** With the onboard BMA400 and RTC, it serves as an everyday pedometer, stopwatch, and voice-recorder (saving directly to the NAND flash).
+<img width="1894" height="3264" alt="CNC aluminium case" src="https://github.com/user-attachments/assets/b4b6c6af-3ee1-41a1-8c96-507016830dd6" />
 
+## Build the firmware
 
+Requires `arm-none-eabi-gcc`, `cmake`, `ninja` and ST Edge AI Core (free from st.com).
 
-## Current Software Implementation
+ST's AI runtime is proprietary, so it isn't in this repo. Unpack ST Edge AI Core to `~/ST/stedgeai/10.2.0`, or set `STEDGEAI_ROOT`, then run on Linux:
 
-- **Dual USB Interface:** Configured via TinyUSB to expose both **CDC (Virtual COM Port)** for serial debugging which can accept commands and **Mass Storage Class (MSC)** for direct file access.
-- **Storage Integration:** Connection to the onboard **Storage**, allowing the device to act as a standard USB flash drive when plugged into a host.
-- **RTC** can set time and recieve time updating ui.
-- **Motion & Orientation Tracking** - IMU to reconize when screen tilted and to count steps.
+```bash
+git clone https://github.com/Spectrewolf777/Stm32l4-Watch.git
+cd Stm32l4-Watch
+tools/update_model.sh
+cmake --preset Debug
+cmake --build build/Debug
+```
 
+The firmware is written to `build/Debug/WatchWatchWatch.elf`. Debug build usage is about 81% of RAM and 85% of flash.
 
-## Planned Software Features
+## Programming the watch
 
-- **RTC:** Need to setup timers to count down on ui.
-- **Wireless Connectivity:** Integrate a **Bluetooth** stack to enable smartphone data syncing.
-- Implement a digital **compass** for accurate heading and orientation sensing.
-- **Motion & Orientation Tracking:** - adding more gestures to control microphone.
-- act as a keyboard, mouse , badusb and can communicate through commands.
-- link phone and watch through bluetooth to get other data link weather or whatever you want.
-- Watch can be used in future to control custom project you make later as it has bluetooth and is open source and can be programmed later 
-- store audio recordings and activate audio recording with gestures.
+**Method 1 (recommended): SWD programmer**
+- Flashes both the **STM32** and **nRF52**, including BLE.
+- Works with an **ST-Link** or **J-Link**. The **J-Link EDU Mini** is recommended because it supports both chips.
+- Connect with a Tag-Connect cable such as the **TC2030-IDC-NL**. An adapter board may be needed.
 
-<img width="3000" height="4000" alt="nnnn" src="https://github.com/user-attachments/assets/4e4e009c-f669-4896-b754-4356d55145fa" />
-Battery not soldered yet that why i am using usb as coding hasnt finished and wanted to do more current testing.
+**Method 2: USB-C DFU bootloader**
+- Flash an `.elf` over USB-C with **STM32CubeProgrammer**.
+- This cannot program the nRF52, so BLE won't work out of the box.
+- If you aren't using BLE, you can disconnect its circuit by removing the **0 Ω resistor** in the BLE section.
 
-<img width="2000" height="1600" alt="Untitled design" src="https://github.com/user-attachments/assets/88df3cd3-ec02-4325-b380-abda1396d602" />
-<img width="3000" height="4000" alt="20260705_174336" src="https://github.com/user-attachments/assets/9bec51a4-f078-400a-b80d-fcb8743b5c8c" />
+**First-time setup**
+1. Format the flash with `-format yes`, or as FAT32 (MBR) on your PC.
+2. Calibrate the compass on the Compass page, then tap Set North.
+3. Set the time with `-t` and `-d`, or from your phone over BLE.
+4. Send `-ai test` and check that it reports PASS.
 
+## USB serial commands
 
+Open `/dev/ttyACM0` on Linux or the COM port on Windows. Type `-h` for the full list.
 
-## Programming Instructions
+| Command | What it does |
+| :--- | :--- |
+| `-ai test` | Run the sound-detector self-test |
+| `-ai on` / `-ai off` | Start or stop listening |
+| `-ai log on` / `-ai log off` | Print live detector results |
+| `-ai` | Sound-detector status |
+| `-t HH:MM:SS` / `-d DD/MM/YY W` | Set time / date |
+| `-s` | All sensor readings |
+| `-dev` | Which chips were detected |
+| `-rec start` / `-rec stop` | Voice recorder |
+| `-wx` | Barometer forecast and pressure history |
+| `-cal start` / `-cal stop`, `-mag` | Compass calibration and debug |
+| `-n` / `-w` | Show a notification / weather text |
+| `-buzz [effect]` | Test the vibration motor |
+| `-pwr` | Battery and USB power status |
+| `-set timeout/haptics/battery/sea ...` | Settings saved to EEPROM |
+| `-sd`, `-format yes` | Check the flash / format it as FAT32 |
 
-This board can be programmed using one of two methods depending on your hardware setup and whether you need Bluetooth Low Energy (BLE) functionality.
+## Roadmap
 
-- **Method 1 (Recommended): SWD Programmer**
-  - Allows you to flash both the **STM32** and the **nRF52** microcontrollers for full functionality (including BLE).
-  - Works with an **ST-Link** or **J-Link** (the **J-Link EDU Mini** is highly recommended as it natively supports both ecosystems).
-  - Connection can be made via a Tag-Connect cable like the **TC2030-IDC-NL** (an adapter board may be required depending on your toolchain).
+**Software**
+- Train on more recordings made through the watch's microphone.
+- Use the accelerometer to reject false knock alerts from the wearer's own hand movements.
+- Low-power sleep and measured battery life, including while listening.
+- Forward sound alerts to a phone or smart lights over BLE.
+- Phone app integration (e.g. Gadgetbridge), Home Assistant control and over-the-air updates.
+- USB HID: keyboard, mouse and presentation clicker.
 
-- **Method 2: USB-C DFU Bootloader**
-  - Allows direct flashing over USB-C using an `.elf` file and **STM32CubeProgrammer**.
-  - **Limitation:** This method **cannot** program the nRF52 chip, meaning you will not have BLE functionality out of the box. 
-  - **Hardware Note:** If you are omitting BLE, you can completely disconnect the BLE circuit by desoldering the **0 $\Omega$ resistor** located in the BLE section of the board.
-
-CNC Aluminum Case
-## <img width="1894" height="3264" alt="20260729_210127" src="https://github.com/user-attachments/assets/b4b6c6af-3ee1-41a1-8c96-507016830dd6" />
-
-
-## Things to improve on next pcb design
-
-- **Upgraded Architecture:** switch from the STM32L4 to the more powerful **STM32U5** advanced low-power states and maybe buck down to 1.8V instead of 3.3V.
-- **High-Speed USB:** Upgrade the USB interface to **USB High-Speed (HS)** for faster write and read speeds.
-- **Stereo Audio:** Replace the current mono microphone setup with a **stereo microphone**.
-- **Storage Expansion:** Upgrade the onboard flash storage to a **larger capacity** .
-- **NRF53:** Allows ble headphones to connect in order to send audio from sd flash or microphones to headphones.
-- **Screen:** AMOLED Screen.
-- **Sensor:** Add light and any other missing sensors.
-- **XIP:** More storage for ui.
-- **GPS:** Allows coordinates but also better tracking of activities like running and maybe add similar to google maps but locally no internet. Can also allow time to sync directly UTC from satellites rather then phone.
-- **Quality of life:** add a coin cell for rtc backup to retain battery life longer. Better battery mounting position. 
-- **Form Factor & Enclosure Optimization:** - Reduce the overall PCB diameter from **44mm down to 40mm**.
-  - Relocate and fix the **battery positioning**.
-
-## Sound alerts (AI)
-
-The watch can recognise smoke alarms, door knocks, doorbells and sirens and alert with vibration. See [docs/SOUND_ALERTS.md](docs/SOUND_ALERTS.md).
+**Next PCB revision**
+- Fix the BMA400 wiring and improve the microphone's sound port.
+- Move to an **STM32U5** for better low-power states, possibly with a 1.8 V rail.
+- USB High-Speed, a stereo microphone and larger storage.
+- **nRF53** for BLE audio, an AMOLED screen, a light sensor and XIP flash for the UI.
+- GPS for location, activity tracking and time sync.
+- Coin cell RTC backup and a better battery position.
+- Reduce the PCB diameter from 44 mm to 40 mm.
 
 ## Licence
 
-Code: MIT. Hardware design files: CERN-OHL-P-2.0. Third-party components and training-data credits: see [THIRD_PARTY.md](THIRD_PARTY.md).
-
-**Building:** ST's AI runtime is proprietary and isn't in this repo. Run `tools/update_model.sh` once after cloning, as described in [docs/SOUND_ALERTS.md](docs/SOUND_ALERTS.md).
+Code: MIT. Hardware design files: CERN-OHL-P-2.0. Third-party components and training-data credits are listed in [THIRD_PARTY.md](THIRD_PARTY.md).

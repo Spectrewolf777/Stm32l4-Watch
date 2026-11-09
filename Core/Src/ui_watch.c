@@ -5,6 +5,7 @@
 #include "lis3mdl.h"
 #include "rtc_tasks.h"
 #include "recorder.h"
+#include "sound_detector.h"
 #include "mic.h"
 #include "cst816t.h"
 #include "power_mon.h"
@@ -24,7 +25,7 @@
 #define UI_REFRESH_MS 200U
 
 /* ---- Pages -------------------------------------------------------------- */
-enum { PAGE_FACE, PAGE_SENSORS, PAGE_COMPASS, PAGE_STOPWATCH, PAGE_TIMER, PAGE_VOICE, PAGE_LIGHT, PAGE_COUNT };
+enum { PAGE_FACE, PAGE_SENSORS, PAGE_COMPASS, PAGE_STOPWATCH, PAGE_TIMER, PAGE_VOICE, PAGE_SOUND, PAGE_LIGHT, PAGE_COUNT };
 static lv_obj_t *s_pages[PAGE_COUNT];
 static uint8_t   s_page;
 
@@ -45,7 +46,10 @@ static bool      s_tm_running;
 static uint32_t  s_tm_set_s = 300, s_tm_end, s_tm_left_s = 300;
 /* voice recorder */
 static lv_obj_t *s_rec_btn, *s_rec_btn_lbl, *s_rec_time, *s_rec_info, *s_rec_meter;
-static lv_obj_t *s_rec_badge;
+static lv_obj_t *s_rec_badge, *s_rec_lbl_btn_lbl;
+/* sound alerts */
+static lv_obj_t *s_sa_btn, *s_sa_btn_lbl, *s_sa_state, *s_sa_info;
+static char      s_sa_status[40] = "not started";
 /* lights (server Tapo bulb via nRF52 BLE broadcast) */
 static lv_obj_t *s_lt_btn, *s_lt_btn_lbl, *s_lt_state, *s_lt_info;
 static bool      s_lt_on;               /* last state we asked for */
@@ -485,10 +489,29 @@ static void rec_toggle(void)
 
 static void rec_btn_cb(lv_event_t *e) { (void)e; rec_toggle(); }
 
+/* What is being recorded, for training the sound AI. The label becomes the start of the
+ * file name (KNOCK_261108_113000.WAV) and import_watch_recordings.py sorts by it. */
+static void rec_label_show(void)
+{
+    const char *l = Recorder_GetLabel();
+    lv_label_set_text_fmt(s_rec_lbl_btn_lbl, "%s " LV_SYMBOL_RIGHT, l[0] ? l : "Voice");
+}
+
+static void rec_label_cb(lv_event_t *e)
+{
+    (void)e;
+    if (Recorder_IsRunning()) return;                 /* label is fixed while recording */
+    Haptic(HAPTIC_TICK);
+    Recorder_NextLabel();
+    rec_label_show();
+}
+
 static void build_voice(void)
 {
     lv_obj_t *s = s_pages[PAGE_VOICE] = make_screen();
-    make_label(s, &lv_font_montserrat_14, COL_ACCENT, 0, -88, "Voice");
+    lv_obj_t *lb = make_button(s, "Voice", 0, -84, 110, rec_label_cb, &s_rec_lbl_btn_lbl);
+    lv_obj_set_height(lb, 28);
+    rec_label_show();
 
     s_rec_btn = lv_button_create(s);
     lv_obj_set_size(s_rec_btn, 84, 84);
@@ -542,6 +565,104 @@ static void update_voice(void)
 void UI_RecorderChanged(void)
 {
     if (s_rec_btn) rec_refresh_button();
+}
+
+/* ---- Sound alerts page -------------------------------------------------- */
+static const char *sa_pretty(const char *name)
+{
+    if (strcmp(name, "alarm") == 0)      return "SMOKE / FIRE\nALARM";
+    if (strcmp(name, "smoke_alarm") == 0) return "SMOKE / FIRE\nALARM";
+    if (strcmp(name, "co_alarm") == 0)   return "CARBON\nMONOXIDE ALARM";
+    if (strcmp(name, "door_knock") == 0) return "DOOR KNOCK";
+    if (strcmp(name, "doorbell") == 0)   return "DOORBELL";
+    if (strcmp(name, "siren") == 0)      return "SIREN";
+    return name;
+}
+
+static void sa_show(void)
+{
+    if (!s_sa_btn) return;
+    bool on = SD_IsRunning();
+    lv_obj_set_style_bg_color(s_sa_btn, lv_color_hex(on ? COL_ACCENT : 0x26323D), 0);
+    lv_label_set_text(s_sa_state, on ? "listening" : (SD_IsReady() ? "OFF" : s_sa_status));
+    lv_obj_set_style_text_color(s_sa_state, lv_color_hex(on ? COL_ACCENT : COL_DIM), 0);
+}
+
+static void sa_toggle_cb(lv_event_t *e)
+{
+    (void)e;
+    Haptic(HAPTIC_TICK);
+    if (SD_IsRunning()) SD_Stop();
+    else if (!SD_Start()) UI_ShowNotification(SD_IsReady() ? "Mic start failed" : s_sa_status);
+    sa_show();
+}
+
+static void build_sound(void)
+{
+    lv_obj_t *s = s_pages[PAGE_SOUND] = make_screen();
+    make_label(s, &lv_font_montserrat_14, COL_ACCENT, 0, -88, "Sound alerts");
+
+    s_sa_btn = lv_button_create(s);
+    lv_obj_set_size(s_sa_btn, 80, 80);
+    lv_obj_align(s_sa_btn, LV_ALIGN_CENTER, 0, -30);
+    lv_obj_set_style_radius(s_sa_btn, LV_RADIUS_CIRCLE, 0);
+    lv_obj_add_event_cb(s_sa_btn, sa_toggle_cb, LV_EVENT_CLICKED, NULL);
+    s_sa_btn_lbl = lv_label_create(s_sa_btn);
+    lv_obj_set_style_text_font(s_sa_btn_lbl, &lv_font_montserrat_48, 0);
+    lv_label_set_text(s_sa_btn_lbl, LV_SYMBOL_BELL);
+    lv_obj_center(s_sa_btn_lbl);
+
+    s_sa_state = make_label(s, &lv_font_montserrat_14, COL_DIM, 0, 26, "OFF");
+    s_sa_info  = make_label(s, &lv_font_montserrat_12, COL_DIM, 0, 60, "no alerts yet");
+    page_dots(s, PAGE_SOUND);
+    sa_show();
+}
+
+static void update_sound(void)
+{
+    const sd_stats_t *st = SD_Stats();
+    sa_show();
+    if (st->alerts == 0) return;
+    uint32_t ago = (HAL_GetTick() - st->last_alert_tick) / 60000U;
+    char n[24];
+    strncpy(n, st->last_alert_conf >= 1.0f ? "alarm (beeps)" : SD_ClassName(st->last_alert_class), sizeof n - 1);
+    n[sizeof n - 1] = '\0';
+    lv_label_set_text_fmt(s_sa_info, "last: %s %d%%\n%lu min ago", n,
+                          (int)(st->last_alert_conf * 100.0f), (unsigned long)ago);
+}
+
+/* Called by sound_detector.c when a sound is recognised */
+void sd_on_detect(int class_id, const char *name, float confidence)
+{
+    (void)class_id;
+    char txt[64];
+    if (confidence >= 1.0f)          /* beep-pattern detector: no percentage, it matched the rule */
+        snprintf(txt, sizeof txt, "%s\n(tap to stop)", sa_pretty(name));
+    else
+        snprintf(txt, sizeof txt, "%s\n%d%%  (tap to stop)", sa_pretty(name), (int)(confidence * 100.0f));
+    UI_ShowNotification(txt);
+    s_notif_until = HAL_GetTick() + 20000U;          /* keep it up longer than a normal popup */
+    /* Always vibrates, even if button haptics are off. Alarms and sirens buzz longer. */
+    s_alarm_left = (strstr(name, "alarm") || strcmp(name, "siren") == 0) ? 5 : 3;
+    s_alarm_next = HAL_GetTick();
+}
+
+/* Boot: load the network, check it computes what the PC computed, start listening */
+void UI_SoundAI_Boot(void)
+{
+    if (SD_Init() != 0) {
+        snprintf(s_sa_status, sizeof s_sa_status, "AI load failed");
+    } else {
+        float fe, pe;
+        if (SD_SelfTest(&fe, &pe)) {
+            snprintf(s_sa_status, sizeof s_sa_status, "ok");
+            SD_Start();
+        } else {
+            snprintf(s_sa_status, sizeof s_sa_status, "self-test FAILED");
+            UI_ShowNotification("Sound alerts:\nself-test FAILED\n(-ai test)");
+        }
+    }
+    sa_show();
 }
 
 /* ---- Lights page -------------------------------------------------------- */
@@ -718,6 +839,7 @@ void UI_Watch_Init(void)
     build_stopwatch();
     build_timer();
     build_voice();
+    build_sound();
     build_light();
 
     s_page = PAGE_FACE;
@@ -774,6 +896,7 @@ void UI_Watch_Task(void)
     case PAGE_STOPWATCH: update_stopwatch(); break;
     case PAGE_TIMER:     break;              /* updated by timer_service */
     case PAGE_VOICE:     update_voice();     break;
+    case PAGE_SOUND:     update_sound();     break;
     case PAGE_LIGHT:     break;              /* event driven */
     }
 }

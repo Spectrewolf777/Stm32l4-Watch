@@ -2,7 +2,7 @@
  *  Extra screens built in code (kept out of the SquareLine-generated files so
  *  re-exporting the UI never overwrites them) + swipe navigation.
  *
- *  Swipe left / right:  Watchface <-> Sensors <-> Compass <-> Stopwatch <-> Timer <-> Voice <-> Lights
+ *  Swipe left / right:  Watchface <-> Sensors <-> Compass <-> Stopwatch <-> Timer <-> Voice <-> Sound <-> Lights
  *  (Lights wraps around: one swipe right from the watchface)
  *  Swipe down: back to watchface.  Double tap on watchface: start/stop recording.
  */
@@ -23,6 +23,10 @@ void UI_LightAck(bool ok);                    /* nRF52 confirmed the light broad
 
 /* Call after starting/stopping the recorder from outside the UI (serial cmd) */
 void UI_RecorderChanged(void);
+
+/* Sound alerts: load the AI, run its self-test, start listening if it passes.
+ * Call once after Mic_Init() and UI_Watch_Init(). */
+void UI_SoundAI_Boot(void);
 
 /* true while something needs the screen to stay on (compass cal / Set North) */
 bool UI_KeepAwake(void);

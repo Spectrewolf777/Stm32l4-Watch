@@ -16,7 +16,18 @@
 #define MIC_DATA_ON_FALLING_EDGE  0
 #define MIC_GAIN_SHIFT            5
 
+/* Several parts of the firmware can listen at once, each reads at its own pace */
+typedef enum { MIC_READER_REC = 0, MIC_READER_AI, MIC_READERS } mic_reader_t;
+
 void     Mic_Init(void);              /* after MX_DFSDM1_Init() */
+bool     Mic_Open(mic_reader_t r);    /* starts the mic if nobody else is using it */
+void     Mic_Close(mic_reader_t r);   /* stops the mic when the last reader closes */
+bool     Mic_IsOpen(mic_reader_t r);
+uint32_t Mic_AvailableFor(mic_reader_t r);
+uint32_t Mic_ReadFor(mic_reader_t r, int16_t *dst, uint32_t max_samples);
+uint32_t Mic_OverrunsFor(mic_reader_t r);
+
+/* Recorder shortcuts (= MIC_READER_REC) */
 bool     Mic_Start(void);
 void     Mic_Stop(void);
 bool     Mic_IsRunning(void);

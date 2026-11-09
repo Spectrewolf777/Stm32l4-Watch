@@ -15,6 +15,8 @@
 #include "m24512.h"
 #include "ui_watch.h"
 #include "recorder.h"
+#include "sound_detector.h"
+#include "beep_detector.h"
 #include "mic.h"
 #include "power_mon.h"
 #include "weather.h"
@@ -41,6 +43,7 @@ static void cmd_notify(const char *args);
 static void cmd_weather(const char *args);
 static void cmd_ble(const char *args);
 static void cmd_rec(const char *args);
+static void cmd_ai(const char *args);
 static void cmd_pwr(const char *args);
 static void cmd_sd(const char *args);
 static void cmd_log(const char *args);
@@ -71,6 +74,7 @@ static const SerialCommand_t commands[] = {
     {"-w", "Set weather text. Format: -w <text>", cmd_weather},
     {"-ble", "Set BLE icon state. Format: -ble <0/1>", cmd_ble},
     {"-rec", "Voice recorder: -rec start | -rec stop | -rec (status)", cmd_rec},
+    {"-ai", "Sound alerts: -ai test | on | off | log on | log off | (status)", cmd_ai},
     {"-pwr", "Show USB power status pin and battery", cmd_pwr},
     {"-sd", "Check the flash: card info + what filesystem is on it", cmd_sd},
     {"-log", "Print the time every second: -log on | -log off", cmd_log},
@@ -286,6 +290,43 @@ static void cmd_rec(const char *args)
            Recorder_IsRunning() ? "RECORDING" : "idle",
            (unsigned long)Recorder_Seconds(), Recorder_FileName(), Recorder_Status(),
            (unsigned long)Mic_Overruns());
+    fflush(stdout);
+}
+
+static void cmd_ai(const char *args)
+{
+    if (strcmp(args, "test") == 0) {
+        float fe, pe;
+        bool ok = SD_SelfTest(&fe, &pe);
+        /* nano printf has no %f: print x10000 */
+        printf("\r\n[AI] self-test %s  feature err %ld/10000 (need <100)  prob err %ld/10000 (need <500)\r\n",
+               ok ? "PASS" : "FAIL", (long)(fe * 10000.0f), (long)(pe * 10000.0f));
+        printf("[AI] network run took %lu ms\r\n", (unsigned long)SD_Stats()->last_infer_ms);
+    } else if (strcmp(args, "on") == 0) {
+        printf("\r\n[AI] %s\r\n", SD_Start() ? "listening" : "start FAILED");
+    } else if (strcmp(args, "off") == 0) {
+        SD_Stop();
+        printf("\r\n[AI] off\r\n");
+    } else if (strcmp(args, "log on") == 0 || strcmp(args, "log off") == 0) {
+        SD_SetLog(args[5] == 'n');
+        printf("\r\n[AI] log %s (prints every result while it hears something)\r\n", args + 4);
+    } else if (args[0]) {
+        printf("\r\n[ERROR] Use: -ai test | -ai on | -ai off | -ai log on | -ai log off | -ai\r\n");
+    }
+    const sd_stats_t *st = SD_Stats();
+    printf("[AI] %s  runs=%lu quiet-skipped=%lu alerts=%lu  infer %lu ms (max %lu)  mic dropped=%lu\r\n",
+           !SD_IsReady() ? "NOT LOADED" : SD_IsRunning() ? "LISTENING" : "off",
+           (unsigned long)st->inferences, (unsigned long)st->gated, (unsigned long)st->alerts,
+           (unsigned long)st->last_infer_ms, (unsigned long)st->max_infer_ms,
+           (unsigned long)st->mic_dropped);
+    const beep_stats_t *bs = beep_stats();
+    printf("[BEEP] tones=%lu smoke cycles=%lu alerts=%lu  CO cycles=%lu alerts=%lu  last tone %u Hz %u ms\r\n",
+           (unsigned long)bs->pulses, (unsigned long)bs->t3_cycles, (unsigned long)bs->t3_alerts,
+           (unsigned long)bs->t4_cycles, (unsigned long)bs->t4_alerts, bs->last_freq_hz, bs->last_len_ms);
+    printf("[AI] now:");
+    for (int c = 1; c < SD_NumClasses(); c++)
+        printf(" %s %d%%", SD_ClassName(c), (int)(st->last_prob[c] * 100.0f + 0.5f));
+    printf("\r\n");
     fflush(stdout);
 }
 

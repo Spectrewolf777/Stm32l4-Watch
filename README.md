@@ -102,3 +102,13 @@ CNC Aluminum Case
 - **Quality of life:** add a coin cell for rtc backup to retain battery life longer. Better battery mounting position. 
 - **Form Factor & Enclosure Optimization:** - Reduce the overall PCB diameter from **44mm down to 40mm**.
   - Relocate and fix the **battery positioning**.
+
+## Sound alerts (AI)
+
+The watch can recognise smoke alarms, door knocks, doorbells and sirens and alert with vibration. See [docs/SOUND_ALERTS.md](docs/SOUND_ALERTS.md).
+
+## Licence
+
+Code: MIT. Hardware design files: CERN-OHL-P-2.0. Third-party components and training-data credits: see [THIRD_PARTY.md](THIRD_PARTY.md).
+
+**Building:** ST's AI runtime is proprietary and isn't in this repo. Run `tools/update_model.sh` once after cloning, as described in [docs/SOUND_ALERTS.md](docs/SOUND_ALERTS.md).

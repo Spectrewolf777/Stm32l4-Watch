@@ -1,3 +1,14 @@
 build
 mx.scratch
 !.settings
+__pycache__/
+
+# ST Edge AI output and runtime: proprietary (SLA0044), generated locally by tools/update_model.sh
+Core/AI/network*
+Middlewares/ST/AI/
+
+# Sound-model training
+training/.venv/
+training/data/
+training/out_train*.log
+training/out_open/model.h5

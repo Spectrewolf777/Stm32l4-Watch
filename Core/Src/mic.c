@@ -9,7 +9,12 @@
 
 static int32_t  s_dma[2 * DMA_HALF];
 static int16_t  s_ring[RING_SAMPLES];
-static volatile uint32_t s_wr, s_rd, s_overruns;
+/* One writer (DMA ISR), several readers (recorder, sound AI), each with its own read
+ * position. The writer never waits: a reader that falls more than the ring behind loses
+ * its oldest samples (counted in its overrun counter). */
+static volatile uint32_t s_wr;
+static uint32_t s_rd[MIC_READERS], s_overruns[MIC_READERS];
+static uint8_t  s_users;                   /* bit per open reader */
 static volatile bool     s_running;
 static volatile uint16_t s_peak;
 static uint32_t s_discard;
@@ -45,12 +50,17 @@ void Mic_Init(void)
     pdm_clock(false);   /* mic off until recording */
 }
 
-bool Mic_Start(void)
+bool Mic_Open(mic_reader_t r)
 {
-    if (s_running) return true;
+    s_overruns[r] = 0;
+    if (s_running) {                       /* already streaming for another reader */
+        s_rd[r] = s_wr;
+        s_users |= 1U << r;
+        return true;
+    }
 
-    s_wr = s_rd = 0;
-    s_overruns = 0;
+    s_wr = 0;
+    for (int i = 0; i < MIC_READERS; i++) s_rd[i] = 0;
     s_discard  = STARTUP_DISCARD;
     s_dc_x = s_dc_y = 0;
     s_peak = 0;
@@ -62,20 +72,43 @@ bool Mic_Start(void)
         pdm_clock(false);
         return false;
     }
+    s_users = 1U << r;
     return true;
 }
 
-void Mic_Stop(void)
+void Mic_Close(mic_reader_t r)
 {
-    if (!s_running) return;
+    s_users &= ~(1U << r);
+    if (!s_running || s_users) return;     /* someone else still listening */
     HAL_DFSDM_FilterRegularStop_DMA(&hdfsdm1_filter0);
     s_running = false;
     pdm_clock(false);
 }
 
+bool     Mic_IsOpen(mic_reader_t r) { return s_running && (s_users & (1U << r)); }
+
+/* keep the reader within the ring; leave one DMA half of margin so the ISR never
+ * overwrites what is being read */
+static void catch_up(mic_reader_t r)
+{
+    uint32_t lag = s_wr - s_rd[r];
+    if (lag > RING_SAMPLES - DMA_HALF) {
+        uint32_t drop = lag - (RING_SAMPLES - DMA_HALF);
+        s_rd[r] += drop;
+        s_overruns[r] += drop;
+    }
+}
+
+uint32_t Mic_AvailableFor(mic_reader_t r) { catch_up(r); return s_wr - s_rd[r]; }
+uint32_t Mic_OverrunsFor(mic_reader_t r)  { return s_overruns[r]; }
+
+/* recorder API (unchanged for recorder.c) */
+bool     Mic_Start(void)     { return Mic_Open(MIC_READER_REC); }
+void     Mic_Stop(void)      { Mic_Close(MIC_READER_REC); }
 bool     Mic_IsRunning(void) { return s_running; }
-uint32_t Mic_Available(void) { return s_wr - s_rd; }
-uint32_t Mic_Overruns(void)  { return s_overruns; }
+uint32_t Mic_Available(void) { return Mic_AvailableFor(MIC_READER_REC); }
+uint32_t Mic_Overruns(void)  { return Mic_OverrunsFor(MIC_READER_REC); }
+uint32_t Mic_Read(int16_t *dst, uint32_t max_samples) { return Mic_ReadFor(MIC_READER_REC, dst, max_samples); }
 
 uint16_t Mic_Level(void)
 {
@@ -84,12 +117,13 @@ uint16_t Mic_Level(void)
     return p;
 }
 
-uint32_t Mic_Read(int16_t *dst, uint32_t max_samples)
+uint32_t Mic_ReadFor(mic_reader_t r, int16_t *dst, uint32_t max_samples)
 {
-    uint32_t n = s_wr - s_rd;
+    catch_up(r);
+    uint32_t rd = s_rd[r], n = s_wr - rd;
     if (n > max_samples) n = max_samples;
-    for (uint32_t i = 0; i < n; i++) dst[i] = s_ring[(s_rd + i) & RING_MASK];
-    s_rd += n;
+    for (uint32_t i = 0; i < n; i++) dst[i] = s_ring[(rd + i) & RING_MASK];
+    s_rd[r] = rd + n;
     return n;
 }
 
@@ -113,7 +147,6 @@ static void process(const int32_t *src, uint32_t n)
         uint16_t a = (uint16_t)(v < 0 ? -v : v);
         if (a > s_peak) s_peak = a;
 
-        if (s_wr - s_rd >= RING_SAMPLES) { s_overruns++; continue; }
         s_ring[s_wr & RING_MASK] = (int16_t)v;
         s_wr++;
     }

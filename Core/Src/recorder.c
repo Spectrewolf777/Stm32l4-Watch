@@ -23,6 +23,11 @@ static const char *s_status = "ok";
 static char     s_status_buf[48];
 static int16_t  s_buf[CHUNK_SAMPLES] __attribute__((aligned(4)));   /* DMA-friendly */
 
+/* Training labels for the sound AI ("" = normal voice memo). Must match the prefixes in
+ * training/import_watch_recordings.py */
+static const char *const s_labels[] = { "", "ALARM", "KNOCK", "BELL", "SIREN", "BG" };
+static uint8_t s_label;
+
 uint32_t SD_Glue_LastError(void);   /* sd_glue.c */
 
 static const char *fr_name(FRESULT fr)
@@ -123,10 +128,12 @@ bool Recorder_Start(void)
     if (fr != FR_OK && fr != FR_EXIST) return fail(fr_status("mkdir", fr));
 
     if (rv3028_get_time(&rtc_handle, &t) == HAL_OK) {
-        snprintf(s_name, sizeof s_name, REC_DIR "/R%02u%02u%02u_%02u%02u%02u.WAV",
+        snprintf(s_name, sizeof s_name, REC_DIR "/%s%s%02u%02u%02u_%02u%02u%02u.WAV",
+                 s_label ? s_labels[s_label] : "R", s_label ? "_" : "",
                  t.year, t.month, t.date, t.hours, t.minutes, t.seconds);
     } else {
-        snprintf(s_name, sizeof s_name, REC_DIR "/R%08lu.WAV", (unsigned long)HAL_GetTick());
+        snprintf(s_name, sizeof s_name, REC_DIR "/%s%s%08lu.WAV",
+                 s_label ? s_labels[s_label] : "R", s_label ? "_" : "", (unsigned long)HAL_GetTick());
     }
 
     fr = f_open(&SDFile, s_name, FA_CREATE_ALWAYS | FA_WRITE);
@@ -204,6 +211,9 @@ bool Recorder_Toggle(void)
     if (s_running) { Recorder_Stop(); return false; }
     return Recorder_Start();
 }
+
+const char *Recorder_GetLabel(void) { return s_labels[s_label]; }
+void        Recorder_NextLabel(void) { s_label = (uint8_t)((s_label + 1) % (sizeof s_labels / sizeof s_labels[0])); }
 
 bool        Recorder_IsRunning(void) { return s_running; }
 uint32_t    Recorder_Seconds(void)   { return s_data_bytes / (MIC_SAMPLE_RATE * 2U); }

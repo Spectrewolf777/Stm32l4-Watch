@@ -50,6 +50,7 @@
 #include "ui_watch.h"
 #include "mic.h"
 #include "recorder.h"
+#include "sound_detector.h"
 #include "power_mon.h"
 #include "rtc_tasks.h"
 #include "uart_cmd.h"
@@ -268,6 +269,7 @@ int main(void)
   Sensors_Init();                // EEPROM settings, fuel gauge, HDC2010, BMP388, LIS3MDL, DRV2605L
   Power_Init();                  // PA5 USB power status, PA6 battery alert
   Mic_Init();                    // DFSDM: Sinc3 x125 -> 16 kHz, mic clock off until recording
+  UI_SoundAI_Boot();             // sound alerts: load network, self-test, start listening
 
 
   // Set the initial time in your SquareLine image)
@@ -335,6 +337,7 @@ int main(void)
     Sensors_Task();         // battery, temp/humidity, pressure, compass, haptics
     UI_Watch_Task();        // page updates, countdown timer, notifications
     Recorder_Task();        // mic audio -> WAV file on flash
+    SD_Task();              // sound alerts: features + network every 0.48 s
     Power_Task();           // USB plug/unplug, low battery alert
 
     if (step_sensor_ok && (HAL_GetTick() - last_step_update_time >= STEP_UPDATE_INTERVAL_MS)) {

@@ -1,0 +1,23 @@
+classes: ['background', 'alarm', 'door_knock', 'doorbell', 'siren']
+int8 test accuracy: 0.8642
+
+            backgrou    alarm door_kno doorbell    siren   <- predicted
+background      5902      140      170       79       75   recall 92.7%
+     alarm       242      331        6       31       44   recall 50.6%
+door_knock        65        3      146        1        0   recall 67.9%
+  doorbell        15        1        0       59        0   recall 78.7%
+     siren       156       25        4       12      367   recall 65.1%
+
+real recordings only: 0.8499
+
+            backgrou    alarm door_kno doorbell    siren   <- predicted
+background      5324      140      170       79       75   recall 92.0%
+     alarm       233      232        6       31       44   recall 42.5%
+door_knock        65        3      146        1        0   recall 67.9%
+  doorbell        15        1        0       59        0   recall 78.7%
+     siren       156       25        4       11      237   recall 54.7%
+
+false buzzes on 1.62 h of held-out background audio (firmware logic, 3-result average):
+  threshold 0.7:  37.6 per hour  (alarm 18, door_knock 25, doorbell 10, siren 8)
+  threshold 0.8:  26.5 per hour  (alarm 13, door_knock 16, doorbell 8, siren 6)
+  threshold 0.9:  14.2 per hour  (alarm 8, door_knock 7, doorbell 6, siren 2)

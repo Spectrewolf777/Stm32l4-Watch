@@ -1,0 +1,7 @@
+# TF 2.15 = last release with Keras 2 built in; its TFLite output is accepted by
+# every recent X-CUBE-AI version. Needs Python 3.9 - 3.11.
+tensorflow==2.15.1
+numpy<2
+scipy
+soundfile
+pyserial

@@ -18,6 +18,10 @@ bool        Recorder_Toggle(void);
 bool        Recorder_Format(void);
 void        Recorder_Task(void);        /* main loop: writes audio to flash */
 bool        Recorder_IsRunning(void);
+/* Label for sound-AI training recordings: "" (voice memo), ALARM, KNOCK, BELL, SIREN, BG.
+ * Used as the file name prefix, e.g. REC/KNOCK_261108_113000.WAV */
+const char *Recorder_GetLabel(void);
+void        Recorder_NextLabel(void);
 uint32_t    Recorder_Seconds(void);
 const char *Recorder_FileName(void);     /* current / last file  */
 const char *Recorder_Status(void);       /* last error or "ok"   */
